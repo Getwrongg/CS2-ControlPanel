@@ -262,6 +262,7 @@
                                 <WrapPanel Margin="0,8,0,0">
                                     <Button Width="140" Content="Run Preset Pack" Command="{Binding RunPresetPackCommand}"/>
                                     <Button Width="140" Margin="6,0,0,0" Content="Rollback Last" Command="{Binding RollbackPresetPackCommand}"/>
+                                    <Button Width="210" Margin="6,0,0,0" Content="Clear Current In-Game Overrides" Command="{Binding ClearServerOverridesCommand}"/>
                                 </WrapPanel>
                             </StackPanel>
                         </GroupBox>
@@ -332,6 +333,56 @@
                             </StackPanel>
                         </GroupBox>
                     </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="About / Info">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12">
+                        <GroupBox Header="Application Information" Margin="0,0,0,10">
+                            <StackPanel Margin="8">
+                                <TextBlock FontWeight="SemiBold" Text="CS2 Control Panel"/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="Desktop administration utility for CS2 servers with RCON controls, telemetry monitoring, config libraries, and operational tooling."/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Bug Reporting (Planned)" Margin="0,0,0,10">
+                            <StackPanel Margin="8">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="A dedicated in-app bug report form is planned for a future release."/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="Current placeholder: https://github.com/your-org/CS2-ControlPanel/issues"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Donations (Planned)" Margin="0,0,0,10">
+                            <StackPanel Margin="8">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="Donation and sponsorship options may be added later. This section is intentionally a placeholder right now."/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Open Source Notice" Margin="0,0,0,10">
+                            <StackPanel Margin="8">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="This project uses open-source dependencies. Ensure license obligations are met when distributing binaries or source modifications."/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="Include third-party notices and attribution files in releases where required."/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Usage Terms (AU-focused placeholder)">
+                            <StackPanel Margin="8">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="This tool should be used only by authorized server operators and in compliance with local law and platform terms."/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="For Australian deployments: document operator responsibilities, logging/privacy handling, and acceptable-use restrictions before production release."/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="This is a product placeholder and not legal advice."/>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
                 </ScrollViewer>
             </TabItem>
 

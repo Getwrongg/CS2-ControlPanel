@@ -124,6 +124,7 @@ public class MainViewModel : ObservableObject
         RunHalftimeSwitchCommand = new AsyncRelayCommand(RunHalftimeSwitchAsync, () => _rconService.IsConnected);
         RunPostMatchArchiveCommand = new AsyncRelayCommand(RunPostMatchArchiveAsync, () => _rconService.IsConnected);
         ExportAuditLogCommand = new AsyncRelayCommand(ExportAuditLogAsync);
+        ClearServerOverridesCommand = new AsyncRelayCommand(ClearServerOverridesAsync, () => _rconService.IsConnected);
 
         _ = LoadAsync();
     }
@@ -425,6 +426,7 @@ public class MainViewModel : ObservableObject
     public ICommand RunHalftimeSwitchCommand { get; }
     public ICommand RunPostMatchArchiveCommand { get; }
     public ICommand ExportAuditLogCommand { get; }
+    public ICommand ClearServerOverridesCommand { get; }
 
     private async Task LoadAsync()
     {
@@ -1148,6 +1150,24 @@ public class MainViewModel : ObservableObject
         AddLog($"Audit log exported: {path}");
     }
 
+    private async Task ClearServerOverridesAsync()
+    {
+        var resetCommands = new[]
+        {
+            "exec server.cfg",
+            "exec gamemode_competitive.cfg",
+            "mp_restartgame 1",
+            "say [ADMIN] Server settings reset to default configuration."
+        };
+
+        foreach (var command in resetCommands)
+        {
+            await ExecuteAndAuditAsync("ResetToDefaults", command);
+        }
+
+        AddLog("Default server configuration reset sequence completed.");
+    }
+
     private async Task<string> ExecuteAndAuditAsync(string action, string command)
     {
         if (!CanExecuteCommandSafely(command))
@@ -1485,6 +1505,7 @@ public class MainViewModel : ObservableObject
         (RunHalftimeSwitchCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (RunPostMatchArchiveCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (ExportAuditLogCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (ClearServerOverridesCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
     }
 
     private void AddLog(string line)
