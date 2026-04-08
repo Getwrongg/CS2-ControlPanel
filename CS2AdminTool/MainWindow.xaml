@@ -5,11 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="CS2 Admin Tool" Height="900" Width="1400" MinHeight="760" MinWidth="1200">
-    <Grid Margin="12">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="False">
+    <Grid Margin="12" MinHeight="980">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="220"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4">
@@ -232,4 +233,5 @@
             </Border>
         </Grid>
     </Grid>
+    </ScrollViewer>
 </Window>
