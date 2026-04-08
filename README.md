@@ -8,6 +8,10 @@ CS2 Control Panel is designed for server owners, match admins, and community ope
 
 **Direct download (v1.0.0):** https://github.com/Getwrongg/CS2-ControlPanel/releases/download/v1.0.0/CS2AdminTool.zip
 
+> Because this app is not code-signed yet, Windows may show a warning.
+> Only run it if you downloaded it from the official GitHub Releases page for this project.
+> We plan to provide a properly Windows code-signed release process in a future update.
+
 ## Features
 
 - **RCON connection management**
