@@ -4,13 +4,6 @@ $projectPath = Join-Path $PSScriptRoot 'CS2AdminTool/CS2AdminTool.csproj'
 $distPath = Join-Path $PSScriptRoot 'dist'
 $publishPath = Join-Path $distPath 'publish'
 $zipPath = Join-Path $distPath 'CS2AdminTool.zip'
-$artifactsPath = Join-Path $distPath 'artifacts'
-$buildObjPath = Join-Path $artifactsPath 'obj'
-$buildBinPath = Join-Path $artifactsPath 'bin'
-$buildObjPathWithSlash = Join-Path $buildObjPath ''
-$buildBinPathWithSlash = Join-Path $buildBinPath ''
-$baseObjProperty = "-p:BaseIntermediateOutputPath=$buildObjPathWithSlash"
-$baseBinProperty = "-p:BaseOutputPath=$buildBinPathWithSlash"
 
 Write-Host 'Cleaning previous builds...'
 if (Test-Path $publishPath) {
@@ -22,44 +15,19 @@ if (Test-Path $zipPath) {
 if (-not (Test-Path $distPath)) {
     New-Item -Path $distPath -ItemType Directory | Out-Null
 }
-if (Test-Path $artifactsPath) {
-    Remove-Item $artifactsPath -Recurse -Force
-}
-New-Item -Path $buildObjPath -ItemType Directory -Force | Out-Null
-New-Item -Path $buildBinPath -ItemType Directory -Force | Out-Null
 
 Write-Host 'Publishing application...'
-dotnet clean $projectPath -c Release -r win-x64 `
-    -m:1 `
-    $baseObjProperty `
-    $baseBinProperty
+dotnet clean $projectPath -c Release
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet clean failed with exit code $LASTEXITCODE"
-}
-
-dotnet build $projectPath `
-    -c Release `
-    -r win-x64 `
-    --self-contained false `
-    -m:1 `
-    -p:UseAppHost=true `
-    -p:PublishSingleFile=false `
-    $baseObjProperty `
-    $baseBinProperty
-if ($LASTEXITCODE -ne 0) {
-    throw "dotnet build failed with exit code $LASTEXITCODE"
 }
 
 dotnet publish $projectPath `
     -c Release `
     -r win-x64 `
     --self-contained false `
-    --no-build `
-    -m:1 `
     -p:UseAppHost=true `
     -p:PublishSingleFile=false `
-    $baseObjProperty `
-    $baseBinProperty `
     -o $publishPath
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE"
