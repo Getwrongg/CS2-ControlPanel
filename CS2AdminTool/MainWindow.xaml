@@ -1,0 +1,263 @@
+<Window x:Class="CS2AdminTool.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="CS2 Admin Tool" Height="900" Width="1400" MinHeight="760" MinWidth="1200">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Host"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Margin="8,0,0,0" Text="Port"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Margin="8,0,0,0" Text="Password"/>
+
+                <TextBox Grid.Row="1" Grid.Column="0" Margin="0,4,8,0" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Margin="0,4,8,0" Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Grid.Row="1" Grid.Column="2" Margin="0,4,8,0" Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}"/>
+
+                <Button Grid.Row="1" Grid.Column="3" Width="130" Content="{Binding ConnectionButtonText}" Command="{Binding ToggleConnectionCommand}" Margin="0,4,8,0"/>
+                <Button Grid.Row="1" Grid.Column="4" Width="160" Content="Run Selected Config" Command="{Binding RunSelectedConfigCommand}" Margin="0,4,0,0"/>
+            </Grid>
+        </Border>
+
+        <TabControl Grid.Row="1" Margin="0,10,0,0">
+            <TabItem Header="Config Library">
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.1*"/>
+                        <ColumnDefinition Width="1.5*"/>
+                        <ColumnDefinition Width="2.2*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4" Margin="0,0,8,0">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Top">
+                                <TextBlock FontWeight="Bold" Text="Categories"/>
+                                <TextBox Margin="0,6,0,0" Text="{Binding NewCategoryName, UpdateSourceTrigger=PropertyChanged}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,8">
+                                    <Button Width="90" Content="Add" Command="{Binding CreateCategoryCommand}"/>
+                                    <Button Width="90" Content="Delete" Command="{Binding DeleteCategoryCommand}" Margin="6,0,0,0"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <ListBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" DisplayMemberPath="Name"/>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4" Margin="0,0,8,0">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Top">
+                                <TextBlock FontWeight="Bold" Text="Saved Configs"/>
+                                <TextBox Margin="0,6,0,6" Text="{Binding ConfigSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                                <WrapPanel Margin="0,0,0,8">
+                                    <Button Width="85" Content="New" Command="{Binding CreateConfigCommand}"/>
+                                    <Button Width="85" Content="Save" Command="{Binding SaveConfigCommand}" Margin="6,0,0,0"/>
+                                    <Button Width="85" Content="Duplicate" Command="{Binding DuplicateConfigCommand}" Margin="6,0,0,0"/>
+                                    <Button Width="85" Content="Delete" Command="{Binding DeleteConfigCommand}" Margin="6,0,0,0"/>
+                                </WrapPanel>
+                            </StackPanel>
+                            <ListBox ItemsSource="{Binding ConfigsView}" SelectedItem="{Binding SelectedConfig}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,4">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding Category}" Foreground="Gray"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" Text="Config Editor"/>
+                                <TextBlock Margin="0,8,0,0" Text="Name"/>
+                                <TextBox Text="{Binding SelectedConfig.Name, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Description"/>
+                                <TextBox Text="{Binding SelectedConfig.Description, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Category"/>
+                                <TextBox Text="{Binding SelectedConfig.Category, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Tags (comma separated)"/>
+                                <TextBox Text="{Binding SelectedConfigTagsText, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Assigned Map"/>
+                                <ComboBox ItemsSource="{Binding MapOptions}" DisplayMemberPath="DisplayName" SelectedValuePath="Id" SelectedValue="{Binding SelectedConfig.MapProfileId, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                <TextBlock Margin="0,8,0,0" Text="Commands (one per line)"/>
+                                <TextBox Height="220" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Text="{Binding SelectedConfigCommandsText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                <WrapPanel Margin="0,8,0,0">
+                                    <Button Width="120" Content="Move Last Up" Command="{Binding MoveCommandUpCommand}"/>
+                                    <Button Width="130" Content="Move First Down" Command="{Binding MoveCommandDownCommand}" Margin="6,0,0,0"/>
+                                    <Button Width="120" Content="Run Map Only" Command="{Binding RunMapOnlyCommand}" Margin="6,0,0,0"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Map Library">
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.4*"/>
+                        <ColumnDefinition Width="2*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4" Margin="0,0,8,0">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Top">
+                                <TextBlock FontWeight="Bold" Text="Maps"/>
+                                <TextBox Margin="0,6,0,6" Text="{Binding MapSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                                <WrapPanel Margin="0,0,0,8">
+                                    <Button Width="85" Content="New" Command="{Binding CreateMapCommand}"/>
+                                    <Button Width="85" Content="Save" Command="{Binding SaveMapCommand}" Margin="6,0,0,0"/>
+                                    <Button Width="85" Content="Duplicate" Command="{Binding DuplicateMapCommand}" Margin="6,0,0,0"/>
+                                    <Button Width="85" Content="Delete" Command="{Binding DeleteMapCommand}" Margin="6,0,0,0"/>
+                                </WrapPanel>
+                            </StackPanel>
+                            <ListBox ItemsSource="{Binding MapsView}" SelectedItem="{Binding SelectedMap}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,2">
+                                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding StandardMapName}" Foreground="Gray"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" Text="Map Editor"/>
+                                <TextBlock Margin="0,8,0,0" Text="Display Name"/>
+                                <TextBox Text="{Binding SelectedMap.DisplayName, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Category"/>
+                                <TextBox Text="{Binding SelectedMap.Category, UpdateSourceTrigger=PropertyChanged}"/>
+                                <CheckBox Margin="0,8,0,0" IsChecked="{Binding SelectedMap.IsWorkshopMap}" Content="Workshop map"/>
+                                <TextBlock Margin="0,8,0,0" Text="Workshop Id"/>
+                                <TextBox Text="{Binding SelectedMap.WorkshopMapId, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Standard Map Name"/>
+                                <TextBox Text="{Binding SelectedMap.StandardMapName, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Notes"/>
+                                <TextBox Height="80" AcceptsReturn="True" Text="{Binding SelectedMap.Notes, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Tags (comma separated)"/>
+                                <TextBox Text="{Binding SelectedMapTagsText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Live Monitor">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <WrapPanel Grid.Row="0">
+                        <Button Content="Manual Refresh" Width="130" Command="{Binding RefreshTelemetryCommand}"/>
+                        <Button Content="Start / Stop Auto" Width="140" Margin="6,0,0,0" Command="{Binding ToggleAutoRefreshCommand}"/>
+                        <TextBlock VerticalAlignment="Center" Margin="10,0,0,0" Text="Interval (s):"/>
+                        <TextBox Width="70" Margin="6,0,0,0" Text="{Binding MonitorIntervalSeconds, UpdateSourceTrigger=PropertyChanged}"/>
+                    </WrapPanel>
+
+                    <UniformGrid Grid.Row="1" Columns="2" Margin="0,10,0,0">
+                        <TextBlock Text="Current Map:" FontWeight="SemiBold"/><TextBlock Text="{Binding CurrentMap}"/>
+                        <TextBlock Text="Game Type/Mode:" FontWeight="SemiBold"/><TextBlock Text="{Binding CurrentGameTypeMode}"/>
+                        <TextBlock Text="Hostname:" FontWeight="SemiBold"/><TextBlock Text="{Binding CurrentServerHostname}"/>
+                        <TextBlock Text="Connected Players:" FontWeight="SemiBold"/><TextBlock Text="{Binding CurrentPlayerCount}"/>
+                        <TextBlock Text="Last Refresh:" FontWeight="SemiBold"/><TextBlock Text="{Binding LastRefreshTimeText}"/>
+                    </UniformGrid>
+
+                    <Grid Grid.Row="2" Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                            <TextBlock FontWeight="SemiBold" Text="Raw Status Output"/>
+                            <TextBox Height="130" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto" Text="{Binding RawStatusOutput, Mode=OneWay}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                            <TextBlock FontWeight="SemiBold" Text="Raw Stats Output"/>
+                            <TextBox Height="130" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto" Text="{Binding RawStatsOutput, Mode=OneWay}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <GroupBox Grid.Row="3" Header="Live Feed" Margin="0,10,0,0">
+                        <ListBox ItemsSource="{Binding LiveFeedLines}" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Import / Export">
+                <Grid Margin="10">
+                    <StackPanel>
+                        <TextBlock Text="Import Path"/>
+                        <TextBox Margin="0,4,0,10" Text="{Binding ImportPath, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="Export Path"/>
+                        <TextBox Margin="0,4,0,10" Text="{Binding ExportPath, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <WrapPanel>
+                            <Button Width="100" Content="Import All" Command="{Binding ImportAllCommand}"/>
+                            <Button Width="100" Content="Export All" Command="{Binding ExportAllCommand}" Margin="6,0,0,0"/>
+                            <Button Width="120" Content="Import Configs" Command="{Binding ImportConfigsCommand}" Margin="6,0,0,0"/>
+                            <Button Width="120" Content="Export Configs" Command="{Binding ExportConfigsCommand}" Margin="6,0,0,0"/>
+                        </WrapPanel>
+                        <WrapPanel Margin="0,8,0,0">
+                            <Button Width="100" Content="Import Maps" Command="{Binding ImportMapsCommand}"/>
+                            <Button Width="100" Content="Export Maps" Command="{Binding ExportMapsCommand}" Margin="6,0,0,0"/>
+                            <Button Width="120" Content="Import Config" Command="{Binding ImportSingleConfigCommand}" Margin="6,0,0,0"/>
+                            <Button Width="130" Content="Export Selected" Command="{Binding ExportSelectedConfigCommand}" Margin="6,0,0,0"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Console">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Margin="0,0,8,0" Text="{Binding ManualCommand, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Button Grid.Column="1" Width="95" Content="Execute" Command="{Binding ExecuteCommand}"/>
+                    </Grid>
+
+                    <ListBox Grid.Row="1" Margin="0,10,0,0" ItemsSource="{Binding LogLines}" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

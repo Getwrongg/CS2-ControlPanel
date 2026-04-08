@@ -1,0 +1,86 @@
+[
+  {
+    "id": "b0f89f20-1111-4f1a-9f1c-9ca0e7100011",
+    "name": "Mirage Smoke Practice",
+    "description": "Practice smokes and utility lineups",
+    "category": "Practice",
+    "mapProfileId": "a0f89f20-1111-4f1a-9f1c-9ca0e7100002",
+    "isWorkshopMap": false,
+    "standardMapName": "de_mirage",
+    "commands": [
+      { "order": 1, "commandText": "bot_kick" },
+      { "order": 2, "commandText": "sv_cheats 1" },
+      { "order": 3, "commandText": "mp_freezetime 0" },
+      { "order": 4, "commandText": "mp_buy_anywhere 1" }
+    ],
+    "tags": ["smoke", "practice"],
+    "createdAt": "2026-01-01T00:00:00Z",
+    "updatedAt": "2026-01-01T00:00:00Z"
+  },
+  {
+    "id": "b0f89f20-1111-4f1a-9f1c-9ca0e7100012",
+    "name": "Dust2 Competitive",
+    "description": "Competitive ruleset on Dust2",
+    "category": "Competitive",
+    "mapProfileId": "a0f89f20-1111-4f1a-9f1c-9ca0e7100001",
+    "isWorkshopMap": false,
+    "standardMapName": "de_dust2",
+    "commands": [
+      { "order": 1, "commandText": "game_type 0" },
+      { "order": 2, "commandText": "game_mode 1" }
+    ],
+    "tags": ["comp"],
+    "createdAt": "2026-01-01T00:00:00Z",
+    "updatedAt": "2026-01-01T00:00:00Z"
+  },
+  {
+    "id": "b0f89f20-1111-4f1a-9f1c-9ca0e7100013",
+    "name": "Dust2 Deathmatch",
+    "description": "DM ruleset on Dust2",
+    "category": "Deathmatch",
+    "mapProfileId": "a0f89f20-1111-4f1a-9f1c-9ca0e7100001",
+    "isWorkshopMap": false,
+    "standardMapName": "de_dust2",
+    "commands": [
+      { "order": 1, "commandText": "game_type 1" },
+      { "order": 2, "commandText": "game_mode 2" },
+      { "order": 3, "commandText": "mp_respawn_on_death_ct 1" },
+      { "order": 4, "commandText": "mp_respawn_on_death_t 1" }
+    ],
+    "tags": ["dm"],
+    "createdAt": "2026-01-01T00:00:00Z",
+    "updatedAt": "2026-01-01T00:00:00Z"
+  },
+  {
+    "id": "b0f89f20-1111-4f1a-9f1c-9ca0e7100014",
+    "name": "Example Surf Workshop Map",
+    "description": "Basic surf setup",
+    "category": "Surf",
+    "mapProfileId": "a0f89f20-1111-4f1a-9f1c-9ca0e7100003",
+    "isWorkshopMap": true,
+    "workshopMapId": "3453222582",
+    "commands": [
+      { "order": 1, "commandText": "sv_airaccelerate 1000" },
+      { "order": 2, "commandText": "sv_cheats 1" }
+    ],
+    "tags": ["surf", "workshop"],
+    "createdAt": "2026-01-01T00:00:00Z",
+    "updatedAt": "2026-01-01T00:00:00Z"
+  },
+  {
+    "id": "b0f89f20-1111-4f1a-9f1c-9ca0e7100015",
+    "name": "Example Bhop Workshop Map",
+    "description": "Basic bhop setup",
+    "category": "Bhop",
+    "mapProfileId": "a0f89f20-1111-4f1a-9f1c-9ca0e7100004",
+    "isWorkshopMap": true,
+    "workshopMapId": "3552211477",
+    "commands": [
+      { "order": 1, "commandText": "sv_autobunnyhopping 1" },
+      { "order": 2, "commandText": "sv_enablebunnyhopping 1" }
+    ],
+    "tags": ["bhop", "workshop"],
+    "createdAt": "2026-01-01T00:00:00Z",
+    "updatedAt": "2026-01-01T00:00:00Z"
+  }
+]
