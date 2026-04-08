@@ -44,13 +44,13 @@ public class ConfigRunnerService
         if (map is not null)
         {
             return map.IsWorkshopMap
-                ? $"changelevel workshop/{map.WorkshopMapId}"
+                ? $"host_workshop_map {map.WorkshopMapId}"
                 : $"changelevel {map.StandardMapName}";
         }
 
         if (config.IsWorkshopMap && !string.IsNullOrWhiteSpace(config.WorkshopMapId))
         {
-            return $"changelevel workshop/{config.WorkshopMapId}";
+            return $"host_workshop_map {config.WorkshopMapId}";
         }
 
         if (!config.IsWorkshopMap && !string.IsNullOrWhiteSpace(config.StandardMapName))
