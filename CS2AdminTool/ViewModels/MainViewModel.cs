@@ -16,6 +16,7 @@ public class MainViewModel : ObservableObject
     private readonly MapLibraryService _mapLibraryService;
     private readonly ConfigRunnerService _runnerService;
     private readonly IRconService _rconService;
+    private readonly ServerMonitorService _serverMonitorService;
 
     private string _host = "127.0.0.1";
     private string _port = "27015";
@@ -36,19 +37,25 @@ public class MainViewModel : ObservableObject
     private ServerConfigProfile? _selectedRecentConfig;
 
     private AppDataStore _store = new();
+    private CancellationTokenSource? _monitorCts;
+    private ServerTelemetry _telemetry = new();
+    private bool _isAutoRefreshEnabled;
+    private int _monitorIntervalSeconds = 5;
 
-    public MainViewModel(ConfigLibraryService configLibraryService, MapLibraryService mapLibraryService, ConfigRunnerService runnerService, IRconService rconService)
+    public MainViewModel(ConfigLibraryService configLibraryService, MapLibraryService mapLibraryService, ConfigRunnerService runnerService, IRconService rconService, ServerMonitorService serverMonitorService)
     {
         _configLibraryService = configLibraryService;
         _mapLibraryService = mapLibraryService;
         _runnerService = runnerService;
         _rconService = rconService;
+        _serverMonitorService = serverMonitorService;
 
         Categories = new ObservableCollection<ConfigCategory>();
         Configs = new ObservableCollection<ServerConfigProfile>();
         Maps = new ObservableCollection<MapProfile>();
         RecentConfigs = new ObservableCollection<ServerConfigProfile>();
         LogLines = new ObservableCollection<string>();
+        LiveFeedLines = new ObservableCollection<string>();
 
         ConfigsView = CollectionViewSource.GetDefaultView(Configs);
         ConfigsView.Filter = FilterConfig;
@@ -57,6 +64,8 @@ public class MainViewModel : ObservableObject
 
         ToggleConnectionCommand = new AsyncRelayCommand(ToggleConnectionAsync);
         ExecuteCommand = new AsyncRelayCommand(ExecuteManualCommandAsync, () => _rconService.IsConnected);
+        RefreshTelemetryCommand = new AsyncRelayCommand(RefreshTelemetryAsync, () => _rconService.IsConnected);
+        ToggleAutoRefreshCommand = new AsyncRelayCommand(ToggleAutoRefreshAsync, () => _rconService.IsConnected);
 
         CreateCategoryCommand = new AsyncRelayCommand(CreateCategoryAsync);
         DeleteCategoryCommand = new AsyncRelayCommand(DeleteSelectedCategoryAsync, () => SelectedCategory is not null);
@@ -93,6 +102,7 @@ public class MainViewModel : ObservableObject
     public ObservableCollection<MapProfile> Maps { get; }
     public ObservableCollection<ServerConfigProfile> RecentConfigs { get; }
     public ObservableCollection<string> LogLines { get; }
+    public ObservableCollection<string> LiveFeedLines { get; }
 
     public ICollectionView ConfigsView { get; }
     public ICollectionView MapsView { get; }
@@ -223,7 +233,25 @@ public class MainViewModel : ObservableObject
 
     public IEnumerable<MapProfile> MapOptions => Maps.OrderBy(m => m.DisplayName).ToList();
 
+    public string CurrentMap => _telemetry.CurrentMap;
+    public string CurrentGameTypeMode => _telemetry.GameTypeMode;
+    public string CurrentServerHostname => _telemetry.ServerHostname;
+    public int CurrentPlayerCount => _telemetry.ConnectedPlayerCount;
+    public string RawStatusOutput => _telemetry.RawStatus;
+    public string RawStatsOutput => _telemetry.RawStats;
+    public string LastRefreshTimeText => _telemetry.LastRefreshUtc?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "Never";
 
+    public bool IsAutoRefreshEnabled
+    {
+        get => _isAutoRefreshEnabled;
+        set => SetProperty(ref _isAutoRefreshEnabled, value);
+    }
+
+    public int MonitorIntervalSeconds
+    {
+        get => _monitorIntervalSeconds;
+        set => SetProperty(ref _monitorIntervalSeconds, value < 1 ? 1 : value);
+    }
 
     public string SelectedMapTagsText
     {
@@ -287,6 +315,8 @@ public class MainViewModel : ObservableObject
 
     public ICommand ToggleConnectionCommand { get; }
     public ICommand ExecuteCommand { get; }
+    public ICommand RefreshTelemetryCommand { get; }
+    public ICommand ToggleAutoRefreshCommand { get; }
     public ICommand CreateCategoryCommand { get; }
     public ICommand DeleteCategoryCommand { get; }
     public ICommand CreateConfigCommand { get; }
@@ -398,6 +428,65 @@ public class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             AddLog($"[Error] {ex.Message}");
+        }
+    }
+
+    private async Task RefreshTelemetryAsync()
+    {
+        if (!_rconService.IsConnected)
+        {
+            AddLog("[Error] Connect to the server before refreshing telemetry.");
+            return;
+        }
+
+        try
+        {
+            var (telemetry, feed) = await _serverMonitorService.RefreshAsync();
+            _telemetry = telemetry;
+            RaiseTelemetryPropertiesChanged();
+
+            foreach (var line in feed)
+            {
+                AddLiveFeed(line);
+            }
+
+            AddLog("Telemetry refreshed.");
+        }
+        catch (Exception ex)
+        {
+            AddLiveFeed($"[{DateTime.Now:HH:mm:ss}] [Monitor][Error] {ex.Message}");
+            AddLog($"[Error] Telemetry refresh failed: {ex.Message}");
+            StopAutoRefresh();
+        }
+    }
+
+    private async Task ToggleAutoRefreshAsync()
+    {
+        if (IsAutoRefreshEnabled)
+        {
+            StopAutoRefresh();
+            return;
+        }
+
+        IsAutoRefreshEnabled = true;
+        _monitorCts = new CancellationTokenSource();
+        AddLog($"Auto-refresh started ({MonitorIntervalSeconds}s interval).");
+
+        try
+        {
+            while (!_monitorCts.IsCancellationRequested && IsAutoRefreshEnabled)
+            {
+                await RefreshTelemetryAsync();
+                await Task.Delay(TimeSpan.FromSeconds(MonitorIntervalSeconds), _monitorCts.Token);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // expected on stop
+        }
+        finally
+        {
+            StopAutoRefresh(false);
         }
     }
 
@@ -936,9 +1025,52 @@ public class MainViewModel : ObservableObject
         }
     }
 
+    private void RaiseTelemetryPropertiesChanged()
+    {
+        OnPropertyChanged(nameof(CurrentMap));
+        OnPropertyChanged(nameof(CurrentGameTypeMode));
+        OnPropertyChanged(nameof(CurrentServerHostname));
+        OnPropertyChanged(nameof(CurrentPlayerCount));
+        OnPropertyChanged(nameof(RawStatusOutput));
+        OnPropertyChanged(nameof(RawStatsOutput));
+        OnPropertyChanged(nameof(LastRefreshTimeText));
+    }
+
+    private void StopAutoRefresh(bool log = true)
+    {
+        if (_monitorCts is not null)
+        {
+            _monitorCts.Cancel();
+            _monitorCts.Dispose();
+            _monitorCts = null;
+        }
+
+        if (IsAutoRefreshEnabled)
+        {
+            IsAutoRefreshEnabled = false;
+            if (log)
+            {
+                AddLog("Auto-refresh stopped.");
+            }
+        }
+    }
+
+    private void AddLiveFeed(string line)
+    {
+        if (Application.Current.Dispatcher.CheckAccess())
+        {
+            LiveFeedLines.Add(line);
+            return;
+        }
+
+        Application.Current.Dispatcher.Invoke(() => LiveFeedLines.Add(line));
+    }
+
     private void RefreshCommandState()
     {
         (ExecuteCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (RefreshTelemetryCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (ToggleAutoRefreshCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (DeleteCategoryCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (SaveConfigCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (DeleteConfigCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
@@ -959,9 +1091,14 @@ public class MainViewModel : ObservableObject
         if (Application.Current.Dispatcher.CheckAccess())
         {
             LogLines.Add(message);
+            LiveFeedLines.Add(message);
             return;
         }
 
-        Application.Current.Dispatcher.Invoke(() => LogLines.Add(message));
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            LogLines.Add(message);
+            LiveFeedLines.Add(message);
+        });
     }
 }

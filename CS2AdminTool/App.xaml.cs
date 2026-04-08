@@ -17,7 +17,9 @@ public partial class App : Application
         var executionService = new CommandExecutionService(rconService);
         var configRunnerService = new ConfigRunnerService(executionService);
 
-        var viewModel = new MainViewModel(configLibraryService, mapLibraryService, configRunnerService, rconService);
+        var serverMonitorService = new ServerMonitorService(rconService);
+
+        var viewModel = new MainViewModel(configLibraryService, mapLibraryService, configRunnerService, rconService, serverMonitorService);
 
         var window = new MainWindow { DataContext = viewModel };
         window.Show();
