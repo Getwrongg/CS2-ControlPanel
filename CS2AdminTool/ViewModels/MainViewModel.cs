@@ -4,6 +4,7 @@ using System.Windows.Input;
 using CS2AdminTool.Infrastructure;
 using CS2AdminTool.Models;
 using CS2AdminTool.Services;
+using System.IO;
 
 namespace CS2AdminTool.ViewModels;
 
