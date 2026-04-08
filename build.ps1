@@ -7,8 +7,10 @@ $zipPath = Join-Path $distPath 'CS2AdminTool.zip'
 $artifactsPath = Join-Path $distPath 'artifacts'
 $buildObjPath = Join-Path $artifactsPath 'obj'
 $buildBinPath = Join-Path $artifactsPath 'bin'
-$baseObjProperty = "-p:BaseIntermediateOutputPath=$buildObjPath"
-$baseBinProperty = "-p:BaseOutputPath=$buildBinPath"
+$buildObjPathWithSlash = Join-Path $buildObjPath ''
+$buildBinPathWithSlash = Join-Path $buildBinPath ''
+$baseObjProperty = "-p:BaseIntermediateOutputPath=$buildObjPathWithSlash"
+$baseBinProperty = "-p:BaseOutputPath=$buildBinPathWithSlash"
 
 Write-Host 'Cleaning previous builds...'
 if (Test-Path $publishPath) {
