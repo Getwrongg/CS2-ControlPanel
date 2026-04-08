@@ -146,9 +146,9 @@
                         </UniformGrid>
 
                         <TextBlock Grid.Row="3" Margin="0,6,0,0" Text="Raw status" FontWeight="SemiBold"/>
-                        <TextBox Grid.Row="4" Height="70" AcceptsReturn="True" Text="{Binding RawStatusOutput}" IsReadOnly="True" VerticalScrollBarVisibility="Auto"/>
+                        <TextBox Grid.Row="4" Height="70" AcceptsReturn="True" Text="{Binding RawStatusOutput, Mode=OneWay}" IsReadOnly="True" VerticalScrollBarVisibility="Auto"/>
                         <TextBlock Grid.Row="5" Margin="0,6,0,0" Text="Raw stats" FontWeight="SemiBold"/>
-                        <TextBox Grid.Row="6" Height="70" AcceptsReturn="True" Text="{Binding RawStatsOutput}" IsReadOnly="True" VerticalScrollBarVisibility="Auto"/>
+                        <TextBox Grid.Row="6" Height="70" AcceptsReturn="True" Text="{Binding RawStatsOutput, Mode=OneWay}" IsReadOnly="True" VerticalScrollBarVisibility="Auto"/>
 
                         <Grid Grid.Row="7" Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
