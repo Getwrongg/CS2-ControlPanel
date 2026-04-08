@@ -7,6 +7,8 @@ $zipPath = Join-Path $distPath 'CS2AdminTool.zip'
 $artifactsPath = Join-Path $distPath 'artifacts'
 $buildObjPath = Join-Path $artifactsPath 'obj'
 $buildBinPath = Join-Path $artifactsPath 'bin'
+$baseObjProperty = "-p:BaseIntermediateOutputPath=$buildObjPath"
+$baseBinProperty = "-p:BaseOutputPath=$buildBinPath"
 
 Write-Host 'Cleaning previous builds...'
 if (Test-Path $publishPath) {
@@ -27,8 +29,8 @@ New-Item -Path $buildBinPath -ItemType Directory -Force | Out-Null
 Write-Host 'Publishing application...'
 dotnet clean $projectPath -c Release -r win-x64 `
     -m:1 `
-    -p:BaseIntermediateOutputPath="$buildObjPath\" `
-    -p:BaseOutputPath="$buildBinPath\"
+    $baseObjProperty `
+    $baseBinProperty
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet clean failed with exit code $LASTEXITCODE"
 }
@@ -40,8 +42,8 @@ dotnet build $projectPath `
     -m:1 `
     -p:UseAppHost=true `
     -p:PublishSingleFile=false `
-    -p:BaseIntermediateOutputPath="$buildObjPath\" `
-    -p:BaseOutputPath="$buildBinPath\"
+    $baseObjProperty `
+    $baseBinProperty
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet build failed with exit code $LASTEXITCODE"
 }
@@ -54,8 +56,8 @@ dotnet publish $projectPath `
     -m:1 `
     -p:UseAppHost=true `
     -p:PublishSingleFile=false `
-    -p:BaseIntermediateOutputPath="$buildObjPath\" `
-    -p:BaseOutputPath="$buildBinPath\" `
+    $baseObjProperty `
+    $baseBinProperty `
     -o $publishPath
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE"
