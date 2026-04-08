@@ -22,10 +22,27 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet clean failed with exit code $LASTEXITCODE"
 }
 
+dotnet build $projectPath `
+    -c Release `
+    -r win-x64 `
+    --self-contained true `
+    -p:GenerateRuntimeConfigurationFiles=true `
+    -p:UseAppHost=true `
+    -p:PublishSingleFile=false
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet build failed with exit code $LASTEXITCODE"
+}
+
+$runtimeConfigPath = Join-Path $PSScriptRoot 'CS2AdminTool/bin/Release/net8.0-windows/win-x64/CS2AdminTool.runtimeconfig.json'
+if (-not (Test-Path $runtimeConfigPath)) {
+    throw "Expected runtime config was not generated: $runtimeConfigPath"
+}
+
 dotnet publish $projectPath `
     -c Release `
     -r win-x64 `
     --self-contained true `
+    --no-build `
     -p:GenerateRuntimeConfigurationFiles=true `
     -p:UseAppHost=true `
     -p:PublishSingleFile=false `
