@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -41,6 +43,19 @@ public class MainViewModel : ObservableObject
     private ServerTelemetry _telemetry = new();
     private bool _isAutoRefreshEnabled;
     private int _monitorIntervalSeconds = 5;
+    private readonly Stack<PresetCommandPack> _appliedPresetHistory = new();
+    private CancellationTokenSource? _automationCts;
+    private string _scheduleMinutes = "30";
+    private string _scheduleAction = "Warmup Pack";
+    private bool _dryRunMode = true;
+    private string _commandDenylist = "quit,restart,exec autoexec.cfg";
+    private string _commandAllowlist = string.Empty;
+    private bool _requireDestructiveConfirm = true;
+    private string _playerActionReason = "admin action";
+    private PlayerSnapshot? _selectedPlayer;
+    private PresetCommandPack? _selectedPresetPack;
+    private string _auditExportPath = "Data/Exports/audit-log.json";
+    private ServerHealthSnapshot _serverHealth = new();
 
     public MainViewModel(ConfigLibraryService configLibraryService, MapLibraryService mapLibraryService, ConfigRunnerService runnerService, IRconService rconService, ServerMonitorService serverMonitorService)
     {
@@ -56,6 +71,9 @@ public class MainViewModel : ObservableObject
         RecentConfigs = new ObservableCollection<ServerConfigProfile>();
         LogLines = new ObservableCollection<string>();
         LiveFeedLines = new ObservableCollection<string>();
+        PresetPacks = new ObservableCollection<PresetCommandPack>(BuildDefaultPresetPacks());
+        ParsedPlayers = new ObservableCollection<PlayerSnapshot>();
+        AuditLogEntries = new ObservableCollection<AuditLogEntry>();
 
         ConfigsView = CollectionViewSource.GetDefaultView(Configs);
         ConfigsView.Filter = FilterConfig;
@@ -93,6 +111,19 @@ public class MainViewModel : ObservableObject
         ExportMapsCommand = new AsyncRelayCommand(ExportMapsAsync);
         ExportSelectedConfigCommand = new AsyncRelayCommand(ExportSelectedConfigAsync, () => SelectedConfig is not null);
         ImportSingleConfigCommand = new AsyncRelayCommand(ImportSingleConfigAsync);
+        RunPresetPackCommand = new AsyncRelayCommand(RunSelectedPresetPackAsync, () => _rconService.IsConnected && SelectedPresetPack is not null);
+        RollbackPresetPackCommand = new AsyncRelayCommand(RollbackLastPresetPackAsync, () => _rconService.IsConnected && _appliedPresetHistory.Count > 0);
+        RefreshPlayersCommand = new AsyncRelayCommand(RefreshPlayersAsync, () => _rconService.IsConnected);
+        KickPlayerCommand = new AsyncRelayCommand(KickSelectedPlayerAsync, () => _rconService.IsConnected && SelectedPlayer is not null);
+        BanPlayerCommand = new AsyncRelayCommand(BanSelectedPlayerAsync, () => _rconService.IsConnected && SelectedPlayer is not null);
+        MutePlayerCommand = new AsyncRelayCommand(MuteSelectedPlayerAsync, () => _rconService.IsConnected && SelectedPlayer is not null);
+        SwapPlayerTeamCommand = new AsyncRelayCommand(SwapSelectedPlayerTeamAsync, () => _rconService.IsConnected && SelectedPlayer is not null);
+        ReadyCheckCommand = new AsyncRelayCommand(RunReadyCheckAsync, () => _rconService.IsConnected);
+        ToggleAutomationCommand = new AsyncRelayCommand(ToggleScheduledAutomationAsync, () => _rconService.IsConnected);
+        RunPreMatchChecklistCommand = new AsyncRelayCommand(RunPreMatchChecklistAsync, () => _rconService.IsConnected);
+        RunHalftimeSwitchCommand = new AsyncRelayCommand(RunHalftimeSwitchAsync, () => _rconService.IsConnected);
+        RunPostMatchArchiveCommand = new AsyncRelayCommand(RunPostMatchArchiveAsync, () => _rconService.IsConnected);
+        ExportAuditLogCommand = new AsyncRelayCommand(ExportAuditLogAsync);
 
         _ = LoadAsync();
     }
@@ -103,6 +134,9 @@ public class MainViewModel : ObservableObject
     public ObservableCollection<ServerConfigProfile> RecentConfigs { get; }
     public ObservableCollection<string> LogLines { get; }
     public ObservableCollection<string> LiveFeedLines { get; }
+    public ObservableCollection<PresetCommandPack> PresetPacks { get; }
+    public ObservableCollection<PlayerSnapshot> ParsedPlayers { get; }
+    public ObservableCollection<AuditLogEntry> AuditLogEntries { get; }
 
     public ICollectionView ConfigsView { get; }
     public ICollectionView MapsView { get; }
@@ -253,6 +287,45 @@ public class MainViewModel : ObservableObject
         set => SetProperty(ref _monitorIntervalSeconds, value < 1 ? 1 : value);
     }
 
+    public PresetCommandPack? SelectedPresetPack
+    {
+        get => _selectedPresetPack;
+        set
+        {
+            if (SetProperty(ref _selectedPresetPack, value))
+            {
+                RefreshCommandState();
+            }
+        }
+    }
+    public PlayerSnapshot? SelectedPlayer
+    {
+        get => _selectedPlayer;
+        set
+        {
+            if (SetProperty(ref _selectedPlayer, value))
+            {
+                RefreshCommandState();
+            }
+        }
+    }
+
+    public string ScheduleMinutes { get => _scheduleMinutes; set => SetProperty(ref _scheduleMinutes, value); }
+    public string ScheduleAction { get => _scheduleAction; set => SetProperty(ref _scheduleAction, value); }
+    public bool DryRunMode { get => _dryRunMode; set => SetProperty(ref _dryRunMode, value); }
+    public string CommandDenylist { get => _commandDenylist; set => SetProperty(ref _commandDenylist, value); }
+    public string CommandAllowlist { get => _commandAllowlist; set => SetProperty(ref _commandAllowlist, value); }
+    public bool RequireDestructiveConfirm { get => _requireDestructiveConfirm; set => SetProperty(ref _requireDestructiveConfirm, value); }
+    public string PlayerActionReason { get => _playerActionReason; set => SetProperty(ref _playerActionReason, value); }
+    public string AuditExportPath { get => _auditExportPath; set => SetProperty(ref _auditExportPath, value); }
+    public bool IsAutomationEnabled => _automationCts is not null;
+
+    public double TickRateVariance => _serverHealth.TickRateVariance;
+    public double ChokePercent => _serverHealth.ChokePercent;
+    public double LossPercent => _serverHealth.LossPercent;
+    public int BotCount => _serverHealth.BotCount;
+    public string HealthAlert => _serverHealth.Alert;
+
     public string SelectedMapTagsText
     {
         get => SelectedMap is null ? string.Empty : string.Join(", ", SelectedMap.Tags);
@@ -339,6 +412,19 @@ public class MainViewModel : ObservableObject
     public ICommand ExportMapsCommand { get; }
     public ICommand ExportSelectedConfigCommand { get; }
     public ICommand ImportSingleConfigCommand { get; }
+    public ICommand RunPresetPackCommand { get; }
+    public ICommand RollbackPresetPackCommand { get; }
+    public ICommand RefreshPlayersCommand { get; }
+    public ICommand KickPlayerCommand { get; }
+    public ICommand BanPlayerCommand { get; }
+    public ICommand MutePlayerCommand { get; }
+    public ICommand SwapPlayerTeamCommand { get; }
+    public ICommand ReadyCheckCommand { get; }
+    public ICommand ToggleAutomationCommand { get; }
+    public ICommand RunPreMatchChecklistCommand { get; }
+    public ICommand RunHalftimeSwitchCommand { get; }
+    public ICommand RunPostMatchArchiveCommand { get; }
+    public ICommand ExportAuditLogCommand { get; }
 
     private async Task LoadAsync()
     {
@@ -443,6 +529,7 @@ public class MainViewModel : ObservableObject
         {
             var (telemetry, feed) = await _serverMonitorService.RefreshAsync();
             _telemetry = telemetry;
+            _serverHealth = BuildHealthSnapshot(telemetry.RawStats, telemetry.RawStatus);
             RaiseTelemetryPropertiesChanged();
 
             foreach (var line in feed)
@@ -888,6 +975,269 @@ public class MainViewModel : ObservableObject
         await PersistAsync();
     }
 
+    private async Task RunSelectedPresetPackAsync()
+    {
+        if (SelectedPresetPack is null)
+        {
+            AddLog("[Error] Select a preset pack first.");
+            return;
+        }
+
+        var commands = SelectedPresetPack.Commands.Where(CanExecuteCommandSafely).ToList();
+        if (commands.Count == 0)
+        {
+            AddLog("[Info] No commands passed guardrails.");
+            return;
+        }
+
+        foreach (var command in commands)
+        {
+            await ExecuteAndAuditAsync($"Preset:{SelectedPresetPack.Name}", command);
+        }
+
+        _appliedPresetHistory.Push(SelectedPresetPack);
+        AddLog($"Preset applied: {SelectedPresetPack.Name}");
+        RefreshCommandState();
+    }
+
+    private async Task RollbackLastPresetPackAsync()
+    {
+        if (_appliedPresetHistory.Count == 0)
+        {
+            AddLog("[Info] No applied preset to rollback.");
+            return;
+        }
+
+        var preset = _appliedPresetHistory.Pop();
+        foreach (var command in preset.RollbackCommands.Where(CanExecuteCommandSafely))
+        {
+            await ExecuteAndAuditAsync($"PresetRollback:{preset.Name}", command);
+        }
+
+        AddLog($"Rollback applied: {preset.Name}");
+        RefreshCommandState();
+    }
+
+    private async Task RefreshPlayersAsync()
+    {
+        var status = await _rconService.SendCommandAsync("status");
+        var players = ParsePlayers(status);
+        ApplyCollection(ParsedPlayers, players);
+        AddLog($"Player list refreshed ({ParsedPlayers.Count} players).");
+    }
+
+    private async Task KickSelectedPlayerAsync() => await ExecutePlayerActionAsync("kickid", "Kick");
+    private async Task BanSelectedPlayerAsync() => await ExecutePlayerActionAsync("banid", "Ban");
+    private async Task MuteSelectedPlayerAsync() => await ExecutePlayerActionAsync("sm_mute", "Mute");
+    private async Task SwapSelectedPlayerTeamAsync() => await ExecutePlayerActionAsync("mp_swapteams", "Swap");
+
+    private async Task ExecutePlayerActionAsync(string baseCommand, string actionName)
+    {
+        if (SelectedPlayer is null)
+        {
+            AddLog("[Error] Select a player first.");
+            return;
+        }
+
+        var target = string.IsNullOrWhiteSpace(SelectedPlayer.SteamId) ? SelectedPlayer.Slot : SelectedPlayer.SteamId;
+        var command = $"{baseCommand} {target} \"{PlayerActionReason}\"";
+        await ExecuteAndAuditAsync($"Player{actionName}", command);
+    }
+
+    private async Task RunReadyCheckAsync()
+    {
+        await ExecuteAndAuditAsync("ReadyCheck", "say [ADMIN] Ready check - type !ready");
+    }
+
+    private async Task ToggleScheduledAutomationAsync()
+    {
+        if (_automationCts is not null)
+        {
+            _automationCts.Cancel();
+            _automationCts.Dispose();
+            _automationCts = null;
+            AddLog("Scheduled automation stopped.");
+            OnPropertyChanged(nameof(IsAutomationEnabled));
+            return;
+        }
+
+        if (!int.TryParse(ScheduleMinutes, out var minutes) || minutes < 1)
+        {
+            AddLog("[Error] Schedule minutes must be a positive integer.");
+            return;
+        }
+
+        _automationCts = new CancellationTokenSource();
+        AddLog($"Scheduled automation started ({minutes} min, action: {ScheduleAction}).");
+        OnPropertyChanged(nameof(IsAutomationEnabled));
+
+        _ = Task.Run(async () =>
+        {
+            while (_automationCts is not null && !_automationCts.IsCancellationRequested)
+            {
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMinutes(minutes), _automationCts.Token);
+                    await ExecuteScheduledActionAsync(ScheduleAction);
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    AddLog($"[Error] Scheduled action failed: {ex.Message}");
+                }
+            }
+        });
+    }
+
+    private async Task ExecuteScheduledActionAsync(string action)
+    {
+        if (action.Contains("map rotation", StringComparison.OrdinalIgnoreCase))
+        {
+            var nextMap = Maps.FirstOrDefault(m => !m.IsWorkshopMap && !string.IsNullOrWhiteSpace(m.StandardMapName));
+            if (nextMap is not null)
+            {
+                await ExecuteAndAuditAsync("ScheduleMapRotation", $"changelevel {nextMap.StandardMapName}");
+            }
+
+            return;
+        }
+
+        var preset = PresetPacks.FirstOrDefault(p => p.Name.Equals(action, StringComparison.OrdinalIgnoreCase));
+        if (preset is not null)
+        {
+            foreach (var cmd in preset.Commands.Where(CanExecuteCommandSafely))
+            {
+                await ExecuteAndAuditAsync($"ScheduledPreset:{preset.Name}", cmd);
+            }
+        }
+    }
+
+    private async Task RunPreMatchChecklistAsync()
+    {
+        await ExecuteAndAuditAsync("PreMatch", "say [ADMIN] Pre-match checklist started.");
+        await ExecuteAndAuditAsync("PreMatch", "mp_warmup_start");
+        await ExecuteAndAuditAsync("PreMatch", "sv_pause_on_team_switch 1");
+    }
+
+    private async Task RunHalftimeSwitchAsync()
+    {
+        await ExecuteAndAuditAsync("Halftime", "mp_halftime 1");
+        await ExecuteAndAuditAsync("Halftime", "say [ADMIN] Halftime switch procedures in progress.");
+    }
+
+    private async Task RunPostMatchArchiveAsync()
+    {
+        await ExecuteAndAuditAsync("PostMatch", "say [ADMIN] GGWP. Archiving match data.");
+        await ExportAuditLogAsync();
+    }
+
+    private async Task ExportAuditLogAsync()
+    {
+        var path = string.IsNullOrWhiteSpace(AuditExportPath) ? "Data/Exports/audit-log.json" : AuditExportPath;
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var payload = JsonSerializer.Serialize(AuditLogEntries.ToList(), new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(path, payload);
+        AddLog($"Audit log exported: {path}");
+    }
+
+    private async Task<string> ExecuteAndAuditAsync(string action, string command)
+    {
+        if (!CanExecuteCommandSafely(command))
+        {
+            return "[Guardrail] blocked";
+        }
+
+        if (DryRunMode)
+        {
+            var dryRunMessage = $"[DryRun] {command}";
+            AddLog(dryRunMessage);
+            AuditLogEntries.Add(new AuditLogEntry { Action = action, CommandText = command, ResponsePreview = dryRunMessage });
+            return dryRunMessage;
+        }
+
+        var response = await _rconService.SendCommandAsync(command);
+        AddLog(response);
+        AuditLogEntries.Add(new AuditLogEntry
+        {
+            Action = action,
+            CommandText = command,
+            ResponsePreview = response.Length > 120 ? response[..120] : response
+        });
+        return response;
+    }
+
+    private bool CanExecuteCommandSafely(string command)
+    {
+        var normalized = command.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return false;
+        }
+
+        var denylist = CommandDenylist.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (denylist.Any(blocked => normalized.Contains(blocked, StringComparison.OrdinalIgnoreCase)))
+        {
+            AddLog($"[Guardrail] Denied command: {normalized}");
+            return false;
+        }
+
+        var allowlist = CommandAllowlist.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (allowlist.Length > 0 && !allowlist.Any(allowed => normalized.Contains(allowed, StringComparison.OrdinalIgnoreCase)))
+        {
+            AddLog($"[Guardrail] Not in allowlist: {normalized}");
+            return false;
+        }
+
+        if (RequireDestructiveConfirm && (normalized.Contains("kick", StringComparison.OrdinalIgnoreCase) || normalized.Contains("ban", StringComparison.OrdinalIgnoreCase)))
+        {
+            var confirmed = MessageBox.Show($"Confirm destructive command?\n{normalized}", "Confirm command", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            return confirmed == MessageBoxResult.Yes;
+        }
+
+        return true;
+    }
+
+    private List<PlayerSnapshot> ParsePlayers(string statusOutput)
+    {
+        var players = new List<PlayerSnapshot>();
+        foreach (var line in statusOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var match = Regex.Match(line, "^#\\s*(\\d+)\\s+\"([^\"]+)\"\\s+\\[([^\\]]+)\\]");
+            if (!match.Success)
+            {
+                continue;
+            }
+
+            players.Add(new PlayerSnapshot
+            {
+                Slot = match.Groups[1].Value,
+                Name = match.Groups[2].Value,
+                SteamId = match.Groups[3].Value
+            });
+        }
+
+        return players;
+    }
+
+    private static List<PresetCommandPack> BuildDefaultPresetPacks()
+    {
+        return
+        [
+            new PresetCommandPack { Name = "Warmup Pack", Description = "Warmup utilities", Commands = ["mp_warmup_start", "mp_freezetime 5"], RollbackCommands = ["mp_warmup_end"] },
+            new PresetCommandPack { Name = "Knife Round", Description = "Knife-round setup", Commands = ["mp_roundtime 2", "mp_restartgame 1"], RollbackCommands = ["mp_roundtime 1.92"] },
+            new PresetCommandPack { Name = "Overtime Pack", Description = "Overtime config", Commands = ["mp_overtime_enable 1", "mp_overtime_maxrounds 6"], RollbackCommands = ["mp_overtime_enable 0"] },
+            new PresetCommandPack { Name = "Practice Mode", Description = "Practice utilities", Commands = ["sv_cheats 1", "mp_limitteams 0"], RollbackCommands = ["sv_cheats 0"] }
+        ];
+    }
+
     private bool FilterConfig(object obj)
     {
         if (obj is not ServerConfigProfile config)
@@ -1034,6 +1384,45 @@ public class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(RawStatusOutput));
         OnPropertyChanged(nameof(RawStatsOutput));
         OnPropertyChanged(nameof(LastRefreshTimeText));
+        OnPropertyChanged(nameof(TickRateVariance));
+        OnPropertyChanged(nameof(ChokePercent));
+        OnPropertyChanged(nameof(LossPercent));
+        OnPropertyChanged(nameof(BotCount));
+        OnPropertyChanged(nameof(HealthAlert));
+    }
+
+    private static ServerHealthSnapshot BuildHealthSnapshot(string stats, string status)
+    {
+        var tickValues = Regex.Matches(stats, @"tick(?:rate)?\s*[:=]\s*(\d+(?:\.\d+)?)", RegexOptions.IgnoreCase)
+            .Select(m => double.TryParse(m.Groups[1].Value, out var v) ? v : 0)
+            .Where(v => v > 0)
+            .ToList();
+        var meanTick = tickValues.Count == 0 ? 0 : tickValues.Average();
+        var variance = tickValues.Count < 2 ? 0 : tickValues.Average(v => Math.Pow(v - meanTick, 2));
+
+        static double ParsePercent(string input, string key)
+        {
+            var match = Regex.Match(input, $"{key}\\s*[:=]\\s*(\\d+(?:\\.\\d+)?)", RegexOptions.IgnoreCase);
+            return match.Success && double.TryParse(match.Groups[1].Value, out var val) ? val : 0;
+        }
+
+        var choke = ParsePercent(stats, "choke");
+        var loss = ParsePercent(stats, "loss");
+        var botsMatch = Regex.Match(status, @"players\s*:\s*\d+\s+humans,\s*(\d+)\s+bots", RegexOptions.IgnoreCase);
+        var bots = botsMatch.Success && int.TryParse(botsMatch.Groups[1].Value, out var parsedBots) ? parsedBots : 0;
+
+        var alert = (choke > 10 || loss > 5 || variance > 3)
+            ? "Warning: network/perf instability"
+            : "Healthy";
+
+        return new ServerHealthSnapshot
+        {
+            TickRateVariance = Math.Round(variance, 2),
+            ChokePercent = Math.Round(choke, 2),
+            LossPercent = Math.Round(loss, 2),
+            BotCount = bots,
+            Alert = alert
+        };
     }
 
     private void StopAutoRefresh(bool log = true)
@@ -1083,6 +1472,19 @@ public class MainViewModel : ObservableObject
         (DeleteMapCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (DuplicateMapCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (ExportSelectedConfigCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (RunPresetPackCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (RollbackPresetPackCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (RefreshPlayersCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (KickPlayerCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (BanPlayerCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (MutePlayerCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (SwapPlayerTeamCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (ReadyCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (ToggleAutomationCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (RunPreMatchChecklistCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (RunHalftimeSwitchCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (RunPostMatchArchiveCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (ExportAuditLogCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
     }
 
     private void AddLog(string line)
