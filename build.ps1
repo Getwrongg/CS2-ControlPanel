@@ -26,7 +26,12 @@ if (-not (Test-Path $distPath)) {
 }
 
 Write-Host 'Publishing application...'
-dotnet publish $projectPath -c Release -r win-x64 --self-contained true -p:GenerateRuntimeConfigurationFiles=true -o $publishPath
+dotnet clean $projectPath -c Release
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet clean failed with exit code $LASTEXITCODE"
+}
+
+dotnet publish $projectPath -c Release -r win-x64 --self-contained true -o $publishPath
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE"
 }
