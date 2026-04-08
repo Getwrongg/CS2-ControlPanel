@@ -11,14 +11,15 @@ public partial class App : Application
         base.OnStartup(e);
 
         var rconService = new RconService();
-        var commandService = new CommandService(rconService);
-        var viewModel = new MainViewModel(commandService, rconService);
+        var jsonStorage = new JsonStorageService();
+        var configLibraryService = new ConfigLibraryService(jsonStorage);
+        var mapLibraryService = new MapLibraryService();
+        var executionService = new CommandExecutionService(rconService);
+        var configRunnerService = new ConfigRunnerService(executionService);
 
-        var window = new MainWindow
-        {
-            DataContext = viewModel
-        };
+        var viewModel = new MainViewModel(configLibraryService, mapLibraryService, configRunnerService, rconService);
 
+        var window = new MainWindow { DataContext = viewModel };
         window.Show();
     }
 }

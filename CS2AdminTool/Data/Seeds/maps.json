@@ -1,0 +1,38 @@
+[
+  {
+    "id": "a0f89f20-1111-4f1a-9f1c-9ca0e7100001",
+    "displayName": "Dust II",
+    "category": "Competitive",
+    "isWorkshopMap": false,
+    "standardMapName": "de_dust2",
+    "notes": "Classic competitive map",
+    "tags": ["classic", "official"]
+  },
+  {
+    "id": "a0f89f20-1111-4f1a-9f1c-9ca0e7100002",
+    "displayName": "Mirage",
+    "category": "Practice",
+    "isWorkshopMap": false,
+    "standardMapName": "de_mirage",
+    "notes": "Great for smoke practice",
+    "tags": ["smokes", "official"]
+  },
+  {
+    "id": "a0f89f20-1111-4f1a-9f1c-9ca0e7100003",
+    "displayName": "Example Surf Workshop Map",
+    "category": "Surf",
+    "isWorkshopMap": true,
+    "workshopMapId": "3453222582",
+    "notes": "Starter surf map",
+    "tags": ["surf", "workshop"]
+  },
+  {
+    "id": "a0f89f20-1111-4f1a-9f1c-9ca0e7100004",
+    "displayName": "Example Bhop Workshop Map",
+    "category": "Bhop",
+    "isWorkshopMap": true,
+    "workshopMapId": "3552211477",
+    "notes": "Starter bhop map",
+    "tags": ["bhop", "workshop"]
+  }
+]

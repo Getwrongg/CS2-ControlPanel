@@ -4,21 +4,21 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="CS2 Admin Tool" Height="640" Width="900" MinWidth="840" MinHeight="560">
-    <Grid Margin="16">
+        Title="CS2 Admin Tool" Height="900" Width="1400" MinHeight="760" MinWidth="1200">
+    <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="220"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" BorderThickness="1" BorderBrush="#DDD" CornerRadius="4" Padding="12">
+        <Border Grid.Row="0" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2*"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
@@ -26,62 +26,210 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Host" Margin="0,0,0,4"/>
-                <TextBlock Grid.Row="0" Grid.Column="1" Text="Port" Margin="8,0,0,4"/>
-                <TextBlock Grid.Row="0" Grid.Column="2" Text="Password" Margin="8,0,0,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Host"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Margin="8,0,0,0" Text="Port"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Margin="8,0,0,0" Text="Password"/>
 
-                <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0"/>
-                <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0"/>
+                <TextBox Grid.Row="1" Grid.Column="0" Margin="0,4,8,0" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Margin="0,4,8,0" Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Grid.Row="1" Grid.Column="2" Margin="0,4,8,0" Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}"/>
 
-                <Button Grid.Row="1" Grid.Column="3"
-                        Width="110"
-                        Content="{Binding ConnectionButtonText}"
-                        Command="{Binding ToggleConnectionCommand}"/>
+                <Button Grid.Row="1" Grid.Column="3" Width="130" Content="{Binding ConnectionButtonText}" Command="{Binding ToggleConnectionCommand}" Margin="0,4,8,0"/>
+                <Button Grid.Row="1" Grid.Column="4" Width="160" Content="Run Selected Config" Command="{Binding RunSelectedConfigCommand}" Margin="0,4,0,0"/>
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" BorderThickness="1" BorderBrush="#DDD" CornerRadius="4" Padding="12" Margin="0,12,0,0">
-            <StackPanel>
-                <TextBlock FontWeight="SemiBold" Text="Presets"/>
-                <ItemsControl ItemsSource="{Binding Presets}" Margin="0,8,0,0">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Button Content="{Binding Name}" Margin="0,0,8,8" Padding="12,6"
-                                    Command="{Binding DataContext.RunPresetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    CommandParameter="{Binding}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-        </Border>
+        <Grid Grid.Row="1" Margin="0,10,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.2*"/>
+                <ColumnDefinition Width="1.8*"/>
+                <ColumnDefinition Width="2.2*"/>
+            </Grid.ColumnDefinitions>
 
-        <Border Grid.Row="2" BorderThickness="1" BorderBrush="#DDD" CornerRadius="4" Padding="12" Margin="0,12,0,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4" Margin="0,0,8,0">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock FontWeight="Bold" Text="Categories"/>
+                        <TextBox Margin="0,6,0,0" Text="{Binding NewCategoryName, UpdateSourceTrigger=PropertyChanged}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,8">
+                            <Button Width="90" Content="Add" Command="{Binding CreateCategoryCommand}"/>
+                            <Button Width="90" Content="Delete" Command="{Binding DeleteCategoryCommand}" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <ListBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" DisplayMemberPath="Name"/>
+                </DockPanel>
+            </Border>
 
-                <TextBox Grid.Column="0" Margin="0,0,8,0" Text="{Binding ManualCommand, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Grid.Column="1" Width="110" Content="Execute" Command="{Binding ExecuteCommand}"/>
-            </Grid>
-        </Border>
+            <Border Grid.Column="1" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4" Margin="0,0,8,0">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock FontWeight="Bold" Text="Saved Configs"/>
+                        <TextBox Margin="0,6,0,6" Text="{Binding ConfigSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                        <WrapPanel Margin="0,0,0,8">
+                            <Button Width="85" Content="New" Command="{Binding CreateConfigCommand}"/>
+                            <Button Width="85" Content="Save" Command="{Binding SaveConfigCommand}" Margin="6,0,0,0"/>
+                            <Button Width="85" Content="Duplicate" Command="{Binding DuplicateConfigCommand}" Margin="6,0,0,0"/>
+                            <Button Width="85" Content="Delete" Command="{Binding DeleteConfigCommand}" Margin="6,0,0,0"/>
+                            <Button Width="110" Content="Run Map Only" Command="{Binding RunMapOnlyCommand}" Margin="6,0,0,0"/>
+                        </WrapPanel>
+                    </StackPanel>
+                    <ListBox ItemsSource="{Binding ConfigsView}" SelectedItem="{Binding SelectedConfig}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,4">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding Category}" Foreground="Gray"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
 
-        <Border Grid.Row="3" BorderThickness="1" BorderBrush="#DDD" CornerRadius="4" Padding="12" Margin="0,12,0,0">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" FontWeight="SemiBold" Text="Output"/>
-                <ListBox Grid.Row="1" Margin="0,8,0,0" ItemsSource="{Binding LogLines}"/>
-            </Grid>
-        </Border>
+            <Border Grid.Column="2" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock FontWeight="Bold" Text="Selected Config Editor"/>
+
+                        <TextBlock Margin="0,8,0,0" Text="Name"/>
+                        <TextBox Text="{Binding SelectedConfig.Name, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Margin="0,8,0,0" Text="Description"/>
+                        <TextBox Text="{Binding SelectedConfig.Description, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Margin="0,8,0,0" Text="Category"/>
+                        <TextBox Text="{Binding SelectedConfig.Category, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Margin="0,8,0,0" Text="Tags (comma separated)"/>
+                        <TextBox Text="{Binding SelectedConfigTagsText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Margin="0,8,0,0" Text="Map"/>
+                        <ComboBox ItemsSource="{Binding MapOptions}" SelectedValue="{Binding SelectedConfig.MapProfileId, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Id" DisplayMemberPath="DisplayName"/>
+
+                        <TextBlock Margin="0,8,0,0" Text="Command List (one command per line)"/>
+                        <TextBox Height="180" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                                 Text="{Binding SelectedConfigCommandsText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button Content="Move Last Up" Width="120" Command="{Binding MoveCommandUpCommand}"/>
+                            <Button Content="Move First Down" Width="130" Command="{Binding MoveCommandDownCommand}" Margin="6,0,0,0"/>
+                        </StackPanel>
+
+                        <TextBlock Margin="0,8,0,0" Text="Runner Options" FontWeight="SemiBold"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock VerticalAlignment="Center" Text="Delay (ms):"/>
+                            <TextBox Width="80" Margin="6,0,0,0" Text="{Binding CommandDelayMs, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <CheckBox Margin="0,4,0,0" IsChecked="{Binding ContinueOnFailure}" Content="Continue on command failure"/>
+                        <CheckBox Margin="0,4,0,0" IsChecked="{Binding AllowBlankCommands}" Content="Allow blank command lines"/>
+
+                        <TextBlock Margin="0,10,0,0" Text="Recent Configs" FontWeight="SemiBold"/>
+                        <ListBox Height="100" ItemsSource="{Binding RecentConfigs}" SelectedItem="{Binding SelectedRecentConfig}" DisplayMemberPath="Name"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="1.7*"/>
+                <ColumnDefinition Width="2.3*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4" Margin="0,0,8,0">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock FontWeight="Bold" Text="Map Library"/>
+                        <TextBox Margin="0,6,0,6" Text="{Binding MapSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                        <WrapPanel Margin="0,0,0,8">
+                            <Button Width="85" Content="New" Command="{Binding CreateMapCommand}"/>
+                            <Button Width="85" Content="Save" Command="{Binding SaveMapCommand}" Margin="6,0,0,0"/>
+                            <Button Width="85" Content="Duplicate" Command="{Binding DuplicateMapCommand}" Margin="6,0,0,0"/>
+                            <Button Width="85" Content="Delete" Command="{Binding DeleteMapCommand}" Margin="6,0,0,0"/>
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <ListBox ItemsSource="{Binding MapsView}" SelectedItem="{Binding SelectedMap}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,2">
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding StandardMapName}" Foreground="Gray"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <Border Grid.Column="1" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4" Margin="0,0,8,0">
+                <StackPanel>
+                    <TextBlock FontWeight="Bold" Text="Map Editor"/>
+                    <TextBlock Margin="0,8,0,0" Text="Display Name"/>
+                    <TextBox Text="{Binding SelectedMap.DisplayName, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Margin="0,8,0,0" Text="Category"/>
+                    <TextBox Text="{Binding SelectedMap.Category, UpdateSourceTrigger=PropertyChanged}"/>
+                    <CheckBox Margin="0,8,0,0" IsChecked="{Binding SelectedMap.IsWorkshopMap}" Content="Workshop map"/>
+                    <TextBlock Margin="0,8,0,0" Text="Workshop Id"/>
+                    <TextBox Text="{Binding SelectedMap.WorkshopMapId, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Margin="0,8,0,0" Text="Standard Map Name"/>
+                    <TextBox Text="{Binding SelectedMap.StandardMapName, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Margin="0,8,0,0" Text="Notes"/>
+                    <TextBox Height="50" AcceptsReturn="True" Text="{Binding SelectedMap.Notes, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Margin="0,8,0,0" Text="Tags (comma separated)"/>
+                    <TextBox Text="{Binding SelectedMapTagsText, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="2" BorderBrush="#DDD" BorderThickness="1" Padding="10" CornerRadius="4">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" FontWeight="Bold" Text="Import / Export + Console"/>
+                    <TextBox Grid.Row="1" Margin="0,8,0,0" Text="{Binding ImportPath, UpdateSourceTrigger=PropertyChanged}" ToolTip="Import file path"/>
+                    <TextBox Grid.Row="2" Margin="0,6,0,0" Text="{Binding ExportPath, UpdateSourceTrigger=PropertyChanged}" ToolTip="Export file path"/>
+
+                    <Grid Grid.Row="3" Margin="0,8,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <WrapPanel Grid.Row="0">
+                            <Button Content="Import All" Command="{Binding ImportAllCommand}" Width="90"/>
+                            <Button Content="Export All" Command="{Binding ExportAllCommand}" Width="90" Margin="6,0,0,0"/>
+                            <Button Content="Import Configs" Command="{Binding ImportConfigsCommand}" Width="110" Margin="6,0,0,0"/>
+                            <Button Content="Export Configs" Command="{Binding ExportConfigsCommand}" Width="110" Margin="6,0,0,0"/>
+                        </WrapPanel>
+
+                        <WrapPanel Grid.Row="1" Margin="0,6,0,0">
+                            <Button Content="Import Maps" Command="{Binding ImportMapsCommand}" Width="100"/>
+                            <Button Content="Export Maps" Command="{Binding ExportMapsCommand}" Width="100" Margin="6,0,0,0"/>
+                            <Button Content="Import Config" Command="{Binding ImportSingleConfigCommand}" Width="105" Margin="6,0,0,0"/>
+                            <Button Content="Export Selected" Command="{Binding ExportSelectedConfigCommand}" Width="115" Margin="6,0,0,0"/>
+                        </WrapPanel>
+
+                        <Grid Grid.Row="2" Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Margin="0,0,8,0" Text="{Binding ManualCommand, UpdateSourceTrigger=PropertyChanged}"/>
+                            <Button Grid.Column="1" Width="95" Content="Execute" Command="{Binding ExecuteCommand}"/>
+                        </Grid>
+
+                        <ListBox Grid.Row="3" Margin="0,8,0,0" ItemsSource="{Binding LogLines}"/>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Window>
