@@ -192,6 +192,11 @@
                         <TextBlock Text="Hostname:" FontWeight="SemiBold"/><TextBlock Text="{Binding CurrentServerHostname}"/>
                         <TextBlock Text="Connected Players:" FontWeight="SemiBold"/><TextBlock Text="{Binding CurrentPlayerCount}"/>
                         <TextBlock Text="Last Refresh:" FontWeight="SemiBold"/><TextBlock Text="{Binding LastRefreshTimeText}"/>
+                        <TextBlock Text="Tickrate Variance:" FontWeight="SemiBold"/><TextBlock Text="{Binding TickRateVariance}"/>
+                        <TextBlock Text="Choke %:" FontWeight="SemiBold"/><TextBlock Text="{Binding ChokePercent}"/>
+                        <TextBlock Text="Loss %:" FontWeight="SemiBold"/><TextBlock Text="{Binding LossPercent}"/>
+                        <TextBlock Text="Bot Count:" FontWeight="SemiBold"/><TextBlock Text="{Binding BotCount}"/>
+                        <TextBlock Text="Health Alert:" FontWeight="SemiBold"/><TextBlock Text="{Binding HealthAlert}"/>
                     </UniformGrid>
 
                     <Grid Grid.Row="2" Margin="0,10,0,0">
@@ -237,6 +242,148 @@
                         </WrapPanel>
                     </StackPanel>
                 </Grid>
+            </TabItem>
+
+            <TabItem Header="RCON Ops+">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <GroupBox Header="Preset Command Packs" Grid.Row="0" Margin="0,0,0,10">
+                            <StackPanel Margin="8">
+                                <ComboBox ItemsSource="{Binding PresetPacks}" SelectedItem="{Binding SelectedPresetPack}" DisplayMemberPath="Name"/>
+                                <WrapPanel Margin="0,8,0,0">
+                                    <Button Width="140" Content="Run Preset Pack" Command="{Binding RunPresetPackCommand}"/>
+                                    <Button Width="140" Margin="6,0,0,0" Content="Rollback Last" Command="{Binding RollbackPresetPackCommand}"/>
+                                    <Button Width="210" Margin="6,0,0,0" Content="Clear Current In-Game Overrides" Command="{Binding ClearServerOverridesCommand}"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Player Management Panel" Grid.Row="1" Margin="0,0,0,10">
+                            <StackPanel Margin="8">
+                                <WrapPanel>
+                                    <Button Width="120" Content="Refresh Players" Command="{Binding RefreshPlayersCommand}"/>
+                                    <Button Width="90" Margin="6,0,0,0" Content="Ready Check" Command="{Binding ReadyCheckCommand}"/>
+                                </WrapPanel>
+                                <TextBlock Margin="0,8,0,0" Text="Reason"/>
+                                <TextBox Text="{Binding PlayerActionReason, UpdateSourceTrigger=PropertyChanged}"/>
+                                <ListBox Margin="0,8,0,0" Height="120" ItemsSource="{Binding ParsedPlayers}" SelectedItem="{Binding SelectedPlayer}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Slot}" Width="40"/>
+                                                <TextBlock Text="{Binding Name}" Width="200"/>
+                                                <TextBlock Text="{Binding SteamId}" Foreground="Gray"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <WrapPanel Margin="0,8,0,0">
+                                    <Button Width="70" Content="Kick" Command="{Binding KickPlayerCommand}"/>
+                                    <Button Width="70" Margin="6,0,0,0" Content="Ban" Command="{Binding BanPlayerCommand}"/>
+                                    <Button Width="70" Margin="6,0,0,0" Content="Mute" Command="{Binding MutePlayerCommand}"/>
+                                    <Button Width="90" Margin="6,0,0,0" Content="Swap Team" Command="{Binding SwapPlayerTeamCommand}"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Scheduled Automation" Grid.Row="2" Margin="0,0,0,10">
+                            <StackPanel Margin="8">
+                                <WrapPanel>
+                                    <TextBlock VerticalAlignment="Center" Text="Every (minutes):"/>
+                                    <TextBox Width="70" Margin="6,0,0,0" Text="{Binding ScheduleMinutes, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Text="Action:"/>
+                                    <TextBox Width="180" Margin="6,0,0,0" Text="{Binding ScheduleAction, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <Button Width="130" Margin="8,0,0,0" Content="Start / Stop" Command="{Binding ToggleAutomationCommand}"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Command Safety Guardrails" Grid.Row="3" Margin="0,0,0,10">
+                            <StackPanel Margin="8">
+                                <CheckBox Content="Dry-run mode (no commands sent)" IsChecked="{Binding DryRunMode}"/>
+                                <CheckBox Margin="0,4,0,0" Content="Confirm destructive commands" IsChecked="{Binding RequireDestructiveConfirm}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Denylist (comma separated)"/>
+                                <TextBox Text="{Binding CommandDenylist, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Allowlist (optional, comma separated)"/>
+                                <TextBox Text="{Binding CommandAllowlist, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Match Workflow Mode" Grid.Row="4" Margin="0,0,0,10">
+                            <WrapPanel Margin="8">
+                                <Button Width="170" Content="Pre-match Checklist" Command="{Binding RunPreMatchChecklistCommand}"/>
+                                <Button Width="170" Margin="6,0,0,0" Content="Halftime Switch" Command="{Binding RunHalftimeSwitchCommand}"/>
+                                <Button Width="180" Margin="6,0,0,0" Content="Post-match Archive" Command="{Binding RunPostMatchArchiveCommand}"/>
+                            </WrapPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Audit Log Export" Grid.Row="5">
+                            <StackPanel Margin="8">
+                                <TextBox Text="{Binding AuditExportPath, UpdateSourceTrigger=PropertyChanged}"/>
+                                <Button Width="150" Margin="0,8,0,0" Content="Export Audit Log" Command="{Binding ExportAuditLogCommand}"/>
+                            </StackPanel>
+                        </GroupBox>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="About / Info">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12">
+                        <GroupBox Header="Application Information" Margin="0,0,0,10">
+                            <StackPanel Margin="8">
+                                <TextBlock FontWeight="SemiBold" Text="CS2 Control Panel"/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="Desktop administration utility for CS2 servers with RCON controls, telemetry monitoring, config libraries, and operational tooling."/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Bug Reporting (Planned)" Margin="0,0,0,10">
+                            <StackPanel Margin="8">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="A dedicated in-app bug report form is planned for a future release."/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="Current placeholder: https://github.com/your-org/CS2-ControlPanel/issues"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Donations (Planned)" Margin="0,0,0,10">
+                            <StackPanel Margin="8">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="Donation and sponsorship options may be added later. This section is intentionally a placeholder right now."/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Open Source Notice" Margin="0,0,0,10">
+                            <StackPanel Margin="8">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="This project uses open-source dependencies. Ensure license obligations are met when distributing binaries or source modifications."/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="Include third-party notices and attribution files in releases where required."/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Usage Terms (AU-focused placeholder)">
+                            <StackPanel Margin="8">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="This tool should be used only by authorized server operators and in compliance with local law and platform terms."/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="For Australian deployments: document operator responsibilities, logging/privacy handling, and acceptable-use restrictions before production release."/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="This is a product placeholder and not legal advice."/>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
             <TabItem Header="Console">

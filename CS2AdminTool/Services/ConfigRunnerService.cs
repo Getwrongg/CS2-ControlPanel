@@ -43,21 +43,27 @@ public class ConfigRunnerService
     {
         if (map is not null)
         {
-            return map.IsWorkshopMap
-                ? $"host_workshop_map {map.WorkshopMapId}"
-                : $"changelevel {map.StandardMapName}";
+            var mapCommand = TryBuildMapCommand(map.IsWorkshopMap, map.WorkshopMapId, map.StandardMapName);
+            if (!string.IsNullOrWhiteSpace(mapCommand))
+            {
+                return mapCommand;
+            }
         }
 
-        if (config.IsWorkshopMap && !string.IsNullOrWhiteSpace(config.WorkshopMapId))
+        return TryBuildMapCommand(config.IsWorkshopMap, config.WorkshopMapId, config.StandardMapName);
+    }
+
+    private static string? TryBuildMapCommand(bool isWorkshopMap, string? workshopMapId, string? standardMapName)
+    {
+        if (isWorkshopMap)
         {
-            return $"host_workshop_map {config.WorkshopMapId}";
+            return string.IsNullOrWhiteSpace(workshopMapId)
+                ? null
+                : $"host_workshop_map {workshopMapId}";
         }
 
-        if (!config.IsWorkshopMap && !string.IsNullOrWhiteSpace(config.StandardMapName))
-        {
-            return $"changelevel {config.StandardMapName}";
-        }
-
-        return null;
+        return string.IsNullOrWhiteSpace(standardMapName)
+            ? null
+            : $"changelevel {standardMapName}";
     }
 }
