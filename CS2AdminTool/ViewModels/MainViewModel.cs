@@ -1051,7 +1051,7 @@ public class MainViewModel : ObservableObject
         await ExecuteAndAuditAsync("ReadyCheck", "say [ADMIN] Ready check - type !ready");
     }
 
-    private async Task ToggleScheduledAutomationAsync()
+    private Task ToggleScheduledAutomationAsync()
     {
         if (_automationCts is not null)
         {
@@ -1060,13 +1060,13 @@ public class MainViewModel : ObservableObject
             _automationCts = null;
             AddLog("Scheduled automation stopped.");
             OnPropertyChanged(nameof(IsAutomationEnabled));
-            return;
+            return Task.CompletedTask;
         }
 
         if (!int.TryParse(ScheduleMinutes, out var minutes) || minutes < 1)
         {
             AddLog("[Error] Schedule minutes must be a positive integer.");
-            return;
+            return Task.CompletedTask;
         }
 
         _automationCts = new CancellationTokenSource();
@@ -1092,6 +1092,8 @@ public class MainViewModel : ObservableObject
                 }
             }
         });
+
+        return Task.CompletedTask;
     }
 
     private async Task ExecuteScheduledActionAsync(string action)
