@@ -4,6 +4,10 @@ A Windows desktop control panel for managing Counter-Strike 2 dedicated servers 
 
 CS2 Control Panel is designed for server owners, match admins, and community operators who want a structured workflow for running server configs, switching maps, monitoring server health, and performing common admin actions from a single UI.
 
+**Latest release:** https://github.com/Getwrongg/CS2-ControlPanel/releases/tag/v1.0.0
+
+**Direct download (v1.0.0):** https://github.com/Getwrongg/CS2-ControlPanel/releases/download/v1.0.0/CS2AdminTool.zip
+
 ## Features
 
 - **RCON connection management**
