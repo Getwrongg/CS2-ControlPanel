@@ -13,6 +13,7 @@ CS2 Control Panel is designed for server owners, match admins, and community ope
 > Only run it if you downloaded it from the official GitHub Releases page for this project.
 > We plan to provide a properly Windows code-signed release process in a future update.
 
+## FULL RCON COMMAND LIST
 - [Commands](commands.md)
 
 ## Features
