@@ -3,6 +3,7 @@
 A Windows desktop control panel for managing Counter-Strike 2 dedicated servers over RCON.
 
 CS2 Control Panel is designed for server owners, match admins, and community operators who want a structured workflow for running server configs, switching maps, monitoring server health, and performing common admin actions from a single UI.
+
 <img width="1379" height="887" alt="image" src="https://github.com/user-attachments/assets/f35763c6-cee0-4ea0-a0cc-7232c6ff05b2" />
 
 **Latest release:** https://github.com/Getwrongg/CS2-ControlPanel/releases/tag/v1.0.0
@@ -14,7 +15,7 @@ CS2 Control Panel is designed for server owners, match admins, and community ope
 > We plan to provide a properly Windows code-signed release process in a future update.
 
 ## FULL RCON COMMAND LIST
-- [Commands](commands.md)
+- [Click Here for Full Command List](commands.md)
 
 
 ## Application Features
