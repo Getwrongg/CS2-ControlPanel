@@ -1,4 +1,4 @@
-# CS2 Control Panel
+# CS2 Dedicated Server Admin Control Panel
 
 A Windows desktop control panel for managing Counter-Strike 2 dedicated servers over RCON.
 
