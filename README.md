@@ -16,7 +16,8 @@ CS2 Control Panel is designed for server owners, match admins, and community ope
 ## FULL RCON COMMAND LIST
 - [Commands](commands.md)
 
-## Features
+
+## Application Features
 
 - **RCON connection management**
   - Connect/disconnect to a server with host, port, and password.
