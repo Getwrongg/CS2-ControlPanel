@@ -16,6 +16,7 @@ public class ConfigLibraryService
     private string CategoriesFile => Path.Combine(DataRoot, "categories.json");
     private string MapsFile => Path.Combine(DataRoot, "maps.json");
     private string ServerConfigsFile => Path.Combine(DataRoot, "serverConfigs.json");
+    private string PlayerHistoryFile => Path.Combine(DataRoot, "playerHistory.json");
 
     public async Task<AppDataStore> LoadAsync(CancellationToken cancellationToken = default)
     {
@@ -24,6 +25,7 @@ public class ConfigLibraryService
         var categories = await _storageService.LoadAsync<List<ConfigCategory>>(CategoriesFile, cancellationToken) ?? new List<ConfigCategory>();
         var maps = await _storageService.LoadAsync<List<MapProfile>>(MapsFile, cancellationToken) ?? new List<MapProfile>();
         var configs = await _storageService.LoadAsync<List<ServerConfigProfile>>(ServerConfigsFile, cancellationToken) ?? new List<ServerConfigProfile>();
+        var history = await _storageService.LoadAsync<List<PlayerHistoryEntry>>(PlayerHistoryFile, cancellationToken) ?? new List<PlayerHistoryEntry>();
 
         EnsureCategories(categories);
 
@@ -32,6 +34,7 @@ public class ConfigLibraryService
             Categories = categories.OrderBy(c => c.Name).ToList(),
             Maps = maps.OrderBy(m => m.DisplayName).ToList(),
             ServerConfigs = configs.OrderBy(c => c.Name).ToList(),
+            PlayerHistory = history.OrderByDescending(h => h.LastSeenUtc).ToList(),
             RunnerOptions = new RunnerOptions()
         };
     }
@@ -42,6 +45,7 @@ public class ConfigLibraryService
         await _storageService.SaveAsync(CategoriesFile, dataStore.Categories.OrderBy(c => c.Name).ToList(), cancellationToken);
         await _storageService.SaveAsync(MapsFile, dataStore.Maps.OrderBy(m => m.DisplayName).ToList(), cancellationToken);
         await _storageService.SaveAsync(ServerConfigsFile, dataStore.ServerConfigs.OrderBy(c => c.Name).ToList(), cancellationToken);
+        await _storageService.SaveAsync(PlayerHistoryFile, dataStore.PlayerHistory.OrderByDescending(h => h.LastSeenUtc).ToList(), cancellationToken);
     }
 
     public async Task ExportAllAsync(string filePath, AppDataStore dataStore, CancellationToken cancellationToken = default)
@@ -94,6 +98,11 @@ public class ConfigLibraryService
         await _storageService.CopyIfMissingAsync(Path.Combine(seedRoot, "categories.json"), CategoriesFile, cancellationToken);
         await _storageService.CopyIfMissingAsync(Path.Combine(seedRoot, "maps.json"), MapsFile, cancellationToken);
         await _storageService.CopyIfMissingAsync(Path.Combine(seedRoot, "serverConfigs.json"), ServerConfigsFile, cancellationToken);
+
+        if (!File.Exists(PlayerHistoryFile))
+        {
+            await _storageService.SaveAsync(PlayerHistoryFile, new List<PlayerHistoryEntry>(), cancellationToken);
+        }
     }
 
     private static void EnsureCategories(List<ConfigCategory> categories)

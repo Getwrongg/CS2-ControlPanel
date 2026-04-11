@@ -19,6 +19,8 @@ public class MainViewModel : ObservableObject
     private readonly ConfigRunnerService _runnerService;
     private readonly IRconService _rconService;
     private readonly ServerMonitorService _serverMonitorService;
+    private readonly PlayerStatusParser _playerStatusParser;
+    private readonly PlayerHistoryService _playerHistoryService;
 
     private string _host = "127.0.0.1";
     private string _port = "27015";
@@ -52,18 +54,32 @@ public class MainViewModel : ObservableObject
     private string _commandAllowlist = string.Empty;
     private bool _requireDestructiveConfirm = true;
     private string _playerActionReason = "admin action";
+    private string _playerHistorySearchText = string.Empty;
+    private string _playerHistoryExportPath = "Data/Exports/player-history.json";
+    private string _lastPlayerParseSource = string.Empty;
+    private bool? _isSourceModAvailable;
     private PlayerSnapshot? _selectedPlayer;
+    private PlayerHistoryEntry? _selectedHistoryPlayer;
     private PresetCommandPack? _selectedPresetPack;
     private string _auditExportPath = "Data/Exports/audit-log.json";
     private ServerHealthSnapshot _serverHealth = new();
 
-    public MainViewModel(ConfigLibraryService configLibraryService, MapLibraryService mapLibraryService, ConfigRunnerService runnerService, IRconService rconService, ServerMonitorService serverMonitorService)
+    public MainViewModel(
+        ConfigLibraryService configLibraryService,
+        MapLibraryService mapLibraryService,
+        ConfigRunnerService runnerService,
+        IRconService rconService,
+        ServerMonitorService serverMonitorService,
+        PlayerStatusParser playerStatusParser,
+        PlayerHistoryService playerHistoryService)
     {
         _configLibraryService = configLibraryService;
         _mapLibraryService = mapLibraryService;
         _runnerService = runnerService;
         _rconService = rconService;
         _serverMonitorService = serverMonitorService;
+        _playerStatusParser = playerStatusParser;
+        _playerHistoryService = playerHistoryService;
 
         Categories = new ObservableCollection<ConfigCategory>();
         Configs = new ObservableCollection<ServerConfigProfile>();
@@ -73,12 +89,15 @@ public class MainViewModel : ObservableObject
         LiveFeedLines = new ObservableCollection<string>();
         PresetPacks = new ObservableCollection<PresetCommandPack>(BuildDefaultPresetPacks());
         ParsedPlayers = new ObservableCollection<PlayerSnapshot>();
+        PlayerHistory = new ObservableCollection<PlayerHistoryEntry>();
         AuditLogEntries = new ObservableCollection<AuditLogEntry>();
 
         ConfigsView = CollectionViewSource.GetDefaultView(Configs);
         ConfigsView.Filter = FilterConfig;
         MapsView = CollectionViewSource.GetDefaultView(Maps);
         MapsView.Filter = FilterMap;
+        PlayerHistoryView = CollectionViewSource.GetDefaultView(PlayerHistory);
+        PlayerHistoryView.Filter = FilterPlayerHistory;
 
         ToggleConnectionCommand = new AsyncRelayCommand(ToggleConnectionAsync);
         ExecuteCommand = new AsyncRelayCommand(ExecuteManualCommandAsync, () => _rconService.IsConnected);
@@ -118,6 +137,10 @@ public class MainViewModel : ObservableObject
         BanPlayerCommand = new AsyncRelayCommand(BanSelectedPlayerAsync, () => _rconService.IsConnected && SelectedPlayer is not null);
         MutePlayerCommand = new AsyncRelayCommand(MuteSelectedPlayerAsync, () => _rconService.IsConnected && SelectedPlayer is not null);
         SwapPlayerTeamCommand = new AsyncRelayCommand(SwapSelectedPlayerTeamAsync, () => _rconService.IsConnected && SelectedPlayer is not null);
+        CopyPlayerSteamIdCommand = new RelayCommand(CopySelectedHistorySteamId, () => SelectedHistoryPlayer is not null);
+        CopyPlayerIpCommand = new RelayCommand(CopySelectedHistoryIp, () => SelectedHistoryPlayer is not null);
+        ExportPlayerHistoryCommand = new AsyncRelayCommand(ExportPlayerHistoryAsync, () => PlayerHistory.Count > 0);
+        UnbanPlayerByIpCommand = new AsyncRelayCommand(UnbanSelectedPlayerByIpAsync, () => _rconService.IsConnected && SelectedHistoryPlayer is not null);
         ReadyCheckCommand = new AsyncRelayCommand(RunReadyCheckAsync, () => _rconService.IsConnected);
         ToggleAutomationCommand = new AsyncRelayCommand(ToggleScheduledAutomationAsync, () => _rconService.IsConnected);
         RunPreMatchChecklistCommand = new AsyncRelayCommand(RunPreMatchChecklistAsync, () => _rconService.IsConnected);
@@ -137,10 +160,12 @@ public class MainViewModel : ObservableObject
     public ObservableCollection<string> LiveFeedLines { get; }
     public ObservableCollection<PresetCommandPack> PresetPacks { get; }
     public ObservableCollection<PlayerSnapshot> ParsedPlayers { get; }
+    public ObservableCollection<PlayerHistoryEntry> PlayerHistory { get; }
     public ObservableCollection<AuditLogEntry> AuditLogEntries { get; }
 
     public ICollectionView ConfigsView { get; }
     public ICollectionView MapsView { get; }
+    public ICollectionView PlayerHistoryView { get; }
 
     public string Host { get => _host; set => SetProperty(ref _host, value); }
     public string Port { get => _port; set => SetProperty(ref _port, value); }
@@ -311,6 +336,30 @@ public class MainViewModel : ObservableObject
         }
     }
 
+    public PlayerHistoryEntry? SelectedHistoryPlayer
+    {
+        get => _selectedHistoryPlayer;
+        set
+        {
+            if (SetProperty(ref _selectedHistoryPlayer, value))
+            {
+                RefreshCommandState();
+            }
+        }
+    }
+
+    public string PlayerHistorySearchText
+    {
+        get => _playerHistorySearchText;
+        set
+        {
+            if (SetProperty(ref _playerHistorySearchText, value))
+            {
+                PlayerHistoryView.Refresh();
+            }
+        }
+    }
+
     public string ScheduleMinutes { get => _scheduleMinutes; set => SetProperty(ref _scheduleMinutes, value); }
     public string ScheduleAction { get => _scheduleAction; set => SetProperty(ref _scheduleAction, value); }
     public bool DryRunMode { get => _dryRunMode; set => SetProperty(ref _dryRunMode, value); }
@@ -318,6 +367,8 @@ public class MainViewModel : ObservableObject
     public string CommandAllowlist { get => _commandAllowlist; set => SetProperty(ref _commandAllowlist, value); }
     public bool RequireDestructiveConfirm { get => _requireDestructiveConfirm; set => SetProperty(ref _requireDestructiveConfirm, value); }
     public string PlayerActionReason { get => _playerActionReason; set => SetProperty(ref _playerActionReason, value); }
+    public string PlayerHistoryExportPath { get => _playerHistoryExportPath; set => SetProperty(ref _playerHistoryExportPath, value); }
+    public string LastPlayerParseSource { get => _lastPlayerParseSource; set => SetProperty(ref _lastPlayerParseSource, value); }
     public string AuditExportPath { get => _auditExportPath; set => SetProperty(ref _auditExportPath, value); }
     public bool IsAutomationEnabled => _automationCts is not null;
 
@@ -420,6 +471,10 @@ public class MainViewModel : ObservableObject
     public ICommand BanPlayerCommand { get; }
     public ICommand MutePlayerCommand { get; }
     public ICommand SwapPlayerTeamCommand { get; }
+    public ICommand CopyPlayerSteamIdCommand { get; }
+    public ICommand CopyPlayerIpCommand { get; }
+    public ICommand ExportPlayerHistoryCommand { get; }
+    public ICommand UnbanPlayerByIpCommand { get; }
     public ICommand ReadyCheckCommand { get; }
     public ICommand ToggleAutomationCommand { get; }
     public ICommand RunPreMatchChecklistCommand { get; }
@@ -437,6 +492,7 @@ public class MainViewModel : ObservableObject
             ApplyCollection(Categories, _store.Categories.OrderBy(c => c.Name));
             ApplyCollection(Maps, _store.Maps.OrderBy(m => m.DisplayName));
             ApplyCollection(Configs, _store.ServerConfigs.OrderBy(c => c.Name));
+            ApplyCollection(PlayerHistory, _store.PlayerHistory.OrderByDescending(p => p.LastSeenUtc));
 
             CommandDelayMs = _store.RunnerOptions.CommandDelayMs;
             ContinueOnFailure = _store.RunnerOptions.ContinueOnCommandFailure;
@@ -445,6 +501,7 @@ public class MainViewModel : ObservableObject
             SelectedCategory = Categories.FirstOrDefault();
             SelectedConfig = Configs.FirstOrDefault();
             SelectedMap = Maps.FirstOrDefault();
+            SelectedHistoryPlayer = PlayerHistory.FirstOrDefault();
             AddLog("Configuration libraries loaded.");
         }
         catch (Exception ex)
@@ -458,6 +515,7 @@ public class MainViewModel : ObservableObject
         _store.Categories = Categories.ToList();
         _store.Maps = Maps.ToList();
         _store.ServerConfigs = Configs.ToList();
+        _store.PlayerHistory = PlayerHistory.OrderByDescending(p => p.LastSeenUtc).ToList();
         _store.RunnerOptions = new RunnerOptions
         {
             CommandDelayMs = CommandDelayMs,
@@ -476,6 +534,7 @@ public class MainViewModel : ObservableObject
             if (_rconService.IsConnected)
             {
                 await _rconService.DisconnectAsync();
+                _isSourceModAvailable = null;
                 AddLog("Disconnected from server.");
             }
             else
@@ -487,6 +546,7 @@ public class MainViewModel : ObservableObject
                 }
 
                 await _rconService.ConnectAsync(new ServerConfig { Host = Host.Trim(), Port = parsedPort, Password = Password });
+                _isSourceModAvailable = null;
                 AddLog($"Connected to {Host}:{Port}");
             }
 
@@ -1022,18 +1082,36 @@ public class MainViewModel : ObservableObject
 
     private async Task RefreshPlayersAsync()
     {
+        AddLog("[Ops+] Player refresh started.");
         var status = await _rconService.SendCommandAsync("status");
-        var players = ParsePlayers(status);
-        ApplyCollection(ParsedPlayers, players);
-        AddLog($"Player list refreshed ({ParsedPlayers.Count} players).");
+        LastPlayerParseSource = status;
+        AddLog($"[Ops+] Raw status received ({status.Length} chars).");
+
+        var parsed = _playerStatusParser.Parse(status);
+        ApplyCollection(ParsedPlayers, parsed.Players);
+        SelectedPlayer = ParsedPlayers.FirstOrDefault();
+
+        if (parsed.Players.Count == 0 && parsed.HadPlayerLines)
+        {
+            AddLog("[Warning] Parser found player-like rows but parsed zero players.");
+        }
+
+        AddLog($"[Ops+] Parsing completed. Parsed players: {ParsedPlayers.Count}.");
+        await MergePlayerHistoryAsync(parsed.Players);
     }
 
-    private async Task KickSelectedPlayerAsync() => await ExecutePlayerActionAsync("kickid", "Kick");
-    private async Task BanSelectedPlayerAsync() => await ExecutePlayerActionAsync("banid", "Ban");
-    private async Task MuteSelectedPlayerAsync() => await ExecutePlayerActionAsync("sm_mute", "Mute");
-    private async Task SwapSelectedPlayerTeamAsync() => await ExecutePlayerActionAsync("mp_swapteams", "Swap");
+    private async Task KickSelectedPlayerAsync()
+    {
+        if (SelectedPlayer is null || string.IsNullOrWhiteSpace(SelectedPlayer.UserId))
+        {
+            AddLog("[Error] Kick requires a valid userid from status output.");
+            return;
+        }
 
-    private async Task ExecutePlayerActionAsync(string baseCommand, string actionName)
+        await ExecuteAndAuditAsync("PlayerKick", $"kickid {SelectedPlayer.UserId} \"{PlayerActionReason}\"");
+    }
+
+    private async Task BanSelectedPlayerAsync()
     {
         if (SelectedPlayer is null)
         {
@@ -1041,9 +1119,161 @@ public class MainViewModel : ObservableObject
             return;
         }
 
-        var target = string.IsNullOrWhiteSpace(SelectedPlayer.SteamId) ? SelectedPlayer.Slot : SelectedPlayer.SteamId;
-        var command = $"{baseCommand} {target} \"{PlayerActionReason}\"";
-        await ExecuteAndAuditAsync($"Player{actionName}", command);
+        var banIdentifier = !string.IsNullOrWhiteSpace(SelectedPlayer.SteamId64)
+            ? SelectedPlayer.SteamId64
+            : !string.IsNullOrWhiteSpace(SelectedPlayer.SteamId)
+                ? SelectedPlayer.SteamId
+                : SelectedPlayer.Steam3;
+
+        if (string.IsNullOrWhiteSpace(banIdentifier))
+        {
+            AddLog("[Error] Ban requires Steam identity (SteamID/SteamID64/Steam3).");
+            return;
+        }
+
+        await ExecuteAndAuditAsync("PlayerBan", $"banid 0 {banIdentifier}");
+        await ExecuteAndAuditAsync("PlayerBan", "writeid");
+    }
+
+    private async Task MuteSelectedPlayerAsync()
+    {
+        if (!await EnsureSourceModCommandAvailableAsync("sm_mute"))
+        {
+            return;
+        }
+
+        if (SelectedPlayer is null || string.IsNullOrWhiteSpace(SelectedPlayer.UserId))
+        {
+            AddLog("[Error] Mute requires a valid userid from status output.");
+            return;
+        }
+
+        await ExecuteAndAuditAsync("PlayerMute", $"sm_mute #{SelectedPlayer.UserId}");
+    }
+
+    private async Task SwapSelectedPlayerTeamAsync()
+    {
+        if (!await EnsureSourceModCommandAvailableAsync("sm_swap"))
+        {
+            return;
+        }
+
+        if (SelectedPlayer is null || string.IsNullOrWhiteSpace(SelectedPlayer.UserId))
+        {
+            AddLog("[Error] Team swap requires a valid userid from status output.");
+            return;
+        }
+
+        await ExecuteAndAuditAsync("PlayerSwapTeam", $"sm_swap #{SelectedPlayer.UserId}");
+    }
+
+    private async Task MergePlayerHistoryAsync(IEnumerable<PlayerSnapshot> players)
+    {
+        var seenUtc = DateTime.UtcNow;
+        var port = int.TryParse(Port, out var parsedPort) ? parsedPort : 0;
+        var changed = _playerHistoryService.MergePlayers(PlayerHistory, players, Host, port, seenUtc);
+        var sortedHistory = PlayerHistory.OrderByDescending(p => p.LastSeenUtc).ToList();
+        ApplyCollection(PlayerHistory, sortedHistory);
+        PlayerHistoryView.Refresh();
+
+        if (changed)
+        {
+            AddLog("[Ops+] Player history updated.");
+            await PersistAsync();
+            AddLog("[Ops+] Player history saved.");
+        }
+    }
+
+    private async Task<bool> EnsureSourceModCommandAvailableAsync(string command)
+    {
+        if (_isSourceModAvailable is null)
+        {
+            var probe = await _rconService.SendCommandAsync("sm version");
+            _isSourceModAvailable = !probe.Contains("Unknown command", StringComparison.OrdinalIgnoreCase)
+                                    && !probe.Contains("not found", StringComparison.OrdinalIgnoreCase);
+
+            AddLog(_isSourceModAvailable.Value
+                ? "[Ops+] SourceMod command path detected."
+                : "[Ops+][Info] SourceMod command path unavailable.");
+        }
+
+        if (_isSourceModAvailable == true)
+        {
+            return true;
+        }
+
+        AddLog($"[Error] '{command}' needs SourceMod admin plugin support. Command not sent.");
+        return false;
+    }
+
+    private void CopySelectedHistorySteamId()
+    {
+        var value = SelectedHistoryPlayer?.SteamId64;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            value = SelectedHistoryPlayer?.SteamId;
+        }
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            value = SelectedHistoryPlayer?.Steam3;
+        }
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            AddLog("[Error] Selected history player does not have a Steam identifier.");
+            return;
+        }
+
+        Clipboard.SetText(value);
+        AddLog($"[Ops+] Copied Steam identifier: {value}");
+    }
+
+    private void CopySelectedHistoryIp()
+    {
+        var ip = PlayerHistoryService.NormalizeIp(SelectedHistoryPlayer?.LastKnownIp ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(ip))
+        {
+            AddLog("[Error] Selected history player does not have an IP.");
+            return;
+        }
+
+        Clipboard.SetText(ip);
+        AddLog($"[Ops+] Copied IP: {ip}");
+    }
+
+    private async Task ExportPlayerHistoryAsync()
+    {
+        var path = string.IsNullOrWhiteSpace(PlayerHistoryExportPath) ? "Data/Exports/player-history.json" : PlayerHistoryExportPath;
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var payload = JsonSerializer.Serialize(PlayerHistory.ToList(), new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(path, payload);
+        AddLog($"[Ops+] Player history exported: {path}");
+    }
+
+    private async Task UnbanSelectedPlayerByIpAsync()
+    {
+        if (SelectedHistoryPlayer is null)
+        {
+            AddLog("[Error] Select a historical player first.");
+            return;
+        }
+
+        var ip = PlayerHistoryService.NormalizeIp(SelectedHistoryPlayer.LastKnownIp);
+        if (!System.Net.IPAddress.TryParse(ip, out _))
+        {
+            AddLog($"[Error] Invalid or unavailable IP for unban: '{SelectedHistoryPlayer.LastKnownIp}'.");
+            return;
+        }
+
+        await ExecuteAndAuditAsync("PlayerUnbanIp", $"removeip {ip}");
+        await ExecuteAndAuditAsync("PlayerUnbanIp", "writeip");
+        AddLog("[Ops+][Info] IP unban attempted. Steam-based unban requires server/plugin-specific commands.");
     }
 
     private async Task RunReadyCheckAsync()
@@ -1227,27 +1457,7 @@ public class MainViewModel : ObservableObject
         return true;
     }
 
-    private List<PlayerSnapshot> ParsePlayers(string statusOutput)
-    {
-        var players = new List<PlayerSnapshot>();
-        foreach (var line in statusOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var match = Regex.Match(line, "^#\\s*(\\d+)\\s+\"([^\"]+)\"\\s+\\[([^\\]]+)\\]");
-            if (!match.Success)
-            {
-                continue;
-            }
-
-            players.Add(new PlayerSnapshot
-            {
-                Slot = match.Groups[1].Value,
-                Name = match.Groups[2].Value,
-                SteamId = match.Groups[3].Value
-            });
-        }
-
-        return players;
-    }
+    
 
     private static List<PresetCommandPack> BuildDefaultPresetPacks()
     {
@@ -1290,6 +1500,22 @@ public class MainViewModel : ObservableObject
                || (map.StandardMapName?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
                || (map.WorkshopMapId?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
                || map.Tags.Any(t => t.Contains(q, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool FilterPlayerHistory(object obj)
+    {
+        if (obj is not PlayerHistoryEntry entry)
+        {
+            return false;
+        }
+
+        var q = PlayerHistorySearchText.Trim();
+        return string.IsNullOrWhiteSpace(q)
+               || entry.LastKnownName.Contains(q, StringComparison.OrdinalIgnoreCase)
+               || entry.SteamId.Contains(q, StringComparison.OrdinalIgnoreCase)
+               || entry.SteamId64.Contains(q, StringComparison.OrdinalIgnoreCase)
+               || entry.Steam3.Contains(q, StringComparison.OrdinalIgnoreCase)
+               || entry.LastKnownIp.Contains(q, StringComparison.OrdinalIgnoreCase);
     }
 
     private string? ValidateConfig(ServerConfigProfile config)
@@ -1501,6 +1727,10 @@ public class MainViewModel : ObservableObject
         (BanPlayerCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (MutePlayerCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (SwapPlayerTeamCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (CopyPlayerSteamIdCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (CopyPlayerIpCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (ExportPlayerHistoryCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (UnbanPlayerByIpCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (ReadyCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (ToggleAutomationCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (RunPreMatchChecklistCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();

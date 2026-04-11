@@ -24,8 +24,17 @@ public partial class App : Application
             var executionService = new CommandExecutionService(rconService);
             var configRunnerService = new ConfigRunnerService(executionService);
             var serverMonitorService = new ServerMonitorService(rconService);
+            var playerStatusParser = new PlayerStatusParser();
+            var playerHistoryService = new PlayerHistoryService();
 
-            var viewModel = new MainViewModel(configLibraryService, mapLibraryService, configRunnerService, rconService, serverMonitorService);
+            var viewModel = new MainViewModel(
+                configLibraryService,
+                mapLibraryService,
+                configRunnerService,
+                rconService,
+                serverMonitorService,
+                playerStatusParser,
+                playerHistoryService);
 
             var window = new MainWindow { DataContext = viewModel };
             window.Show();

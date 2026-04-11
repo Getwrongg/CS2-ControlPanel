@@ -268,31 +268,62 @@
                         </GroupBox>
 
                         <GroupBox Header="Player Management Panel" Grid.Row="1" Margin="0,0,0,10">
-                            <StackPanel Margin="8">
-                                <WrapPanel>
-                                    <Button Width="120" Content="Refresh Players" Command="{Binding RefreshPlayersCommand}"/>
-                                    <Button Width="90" Margin="6,0,0,0" Content="Ready Check" Command="{Binding ReadyCheckCommand}"/>
-                                </WrapPanel>
-                                <TextBlock Margin="0,8,0,0" Text="Reason"/>
-                                <TextBox Text="{Binding PlayerActionReason, UpdateSourceTrigger=PropertyChanged}"/>
-                                <ListBox Margin="0,8,0,0" Height="120" ItemsSource="{Binding ParsedPlayers}" SelectedItem="{Binding SelectedPlayer}">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Slot}" Width="40"/>
-                                                <TextBlock Text="{Binding Name}" Width="200"/>
-                                                <TextBlock Text="{Binding SteamId}" Foreground="Gray"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                                <WrapPanel Margin="0,8,0,0">
-                                    <Button Width="70" Content="Kick" Command="{Binding KickPlayerCommand}"/>
-                                    <Button Width="70" Margin="6,0,0,0" Content="Ban" Command="{Binding BanPlayerCommand}"/>
-                                    <Button Width="70" Margin="6,0,0,0" Content="Mute" Command="{Binding MutePlayerCommand}"/>
-                                    <Button Width="90" Margin="6,0,0,0" Content="Swap Team" Command="{Binding SwapPlayerTeamCommand}"/>
-                                </WrapPanel>
-                            </StackPanel>
+                            <Grid Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                    <WrapPanel>
+                                        <Button Width="120" Content="Refresh Players" Command="{Binding RefreshPlayersCommand}"/>
+                                        <Button Width="90" Margin="6,0,0,0" Content="Ready Check" Command="{Binding ReadyCheckCommand}"/>
+                                    </WrapPanel>
+                                    <TextBlock Margin="0,8,0,0" Text="Reason"/>
+                                    <TextBox Text="{Binding PlayerActionReason, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <ListView Margin="0,8,0,0" Height="180" ItemsSource="{Binding ParsedPlayers}" SelectedItem="{Binding SelectedPlayer}">
+                                        <ListView.View>
+                                            <GridView>
+                                                <GridViewColumn Header="UserId" Width="55" DisplayMemberBinding="{Binding UserId}"/>
+                                                <GridViewColumn Header="Name" Width="150" DisplayMemberBinding="{Binding Name}"/>
+                                                <GridViewColumn Header="Steam" Width="160" DisplayMemberBinding="{Binding BestIdentifier}"/>
+                                                <GridViewColumn Header="IP" Width="120" DisplayMemberBinding="{Binding Address}"/>
+                                            </GridView>
+                                        </ListView.View>
+                                    </ListView>
+                                    <WrapPanel Margin="0,8,0,0">
+                                        <Button Width="70" Content="Kick" Command="{Binding KickPlayerCommand}"/>
+                                        <Button Width="70" Margin="6,0,0,0" Content="Ban" Command="{Binding BanPlayerCommand}"/>
+                                        <Button Width="70" Margin="6,0,0,0" Content="Mute" Command="{Binding MutePlayerCommand}"/>
+                                        <Button Width="90" Margin="6,0,0,0" Content="Swap Team" Command="{Binding SwapPlayerTeamCommand}"/>
+                                    </WrapPanel>
+                                    <TextBlock Margin="0,8,0,0" Text="Last Parsed Source"/>
+                                    <TextBox Height="80" IsReadOnly="True" AcceptsReturn="True" Text="{Binding LastPlayerParseSource, Mode=OneWay}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock FontWeight="SemiBold" Text="Player History"/>
+                                    <TextBox Margin="0,6,0,0" Text="{Binding PlayerHistorySearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <ListView Margin="0,8,0,0" Height="220" ItemsSource="{Binding PlayerHistoryView}" SelectedItem="{Binding SelectedHistoryPlayer}">
+                                        <ListView.View>
+                                            <GridView>
+                                                <GridViewColumn Header="Name" Width="130" DisplayMemberBinding="{Binding LastKnownName}"/>
+                                                <GridViewColumn Header="Steam" Width="140" DisplayMemberBinding="{Binding SteamId64}"/>
+                                                <GridViewColumn Header="IP" Width="110" DisplayMemberBinding="{Binding LastKnownIp}"/>
+                                                <GridViewColumn Header="First Seen" Width="130" DisplayMemberBinding="{Binding FirstSeenUtc}"/>
+                                                <GridViewColumn Header="Last Seen" Width="130" DisplayMemberBinding="{Binding LastSeenUtc}"/>
+                                                <GridViewColumn Header="Times" Width="55" DisplayMemberBinding="{Binding TimesSeen}"/>
+                                            </GridView>
+                                        </ListView.View>
+                                    </ListView>
+                                    <WrapPanel Margin="0,8,0,0">
+                                        <Button Width="95" Content="Copy SteamID" Command="{Binding CopyPlayerSteamIdCommand}"/>
+                                        <Button Width="70" Margin="6,0,0,0" Content="Copy IP" Command="{Binding CopyPlayerIpCommand}"/>
+                                        <Button Width="110" Margin="6,0,0,0" Content="Export History" Command="{Binding ExportPlayerHistoryCommand}"/>
+                                        <Button Width="95" Margin="6,0,0,0" Content="Unban by IP" Command="{Binding UnbanPlayerByIpCommand}"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Grid>
                         </GroupBox>
 
                         <GroupBox Header="Scheduled Automation" Grid.Row="2" Margin="0,0,0,10">
