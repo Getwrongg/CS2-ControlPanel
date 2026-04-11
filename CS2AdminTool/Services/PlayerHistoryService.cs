@@ -23,12 +23,12 @@ public sealed class PlayerHistoryService
 
             var entryChanged = false;
             var previousLastSeenUtc = entry.LastSeenUtc;
-            entryChanged |= UpdateIfDifferent(ref entry.LastKnownName, player.Name);
-            entryChanged |= UpdateIfDifferent(ref entry.SteamId, player.SteamId);
-            entryChanged |= UpdateIfDifferent(ref entry.SteamId64, player.SteamId64);
-            entryChanged |= UpdateIfDifferent(ref entry.Steam3, player.Steam3);
-            entryChanged |= UpdateIfDifferent(ref entry.LastKnownIp, NormalizeIp(player.Address));
-            entryChanged |= UpdateIfDifferent(ref entry.LastServerHost, host);
+            entryChanged |= UpdateIfDifferent(entry.LastKnownName, player.Name, value => entry.LastKnownName = value);
+            entryChanged |= UpdateIfDifferent(entry.SteamId, player.SteamId, value => entry.SteamId = value);
+            entryChanged |= UpdateIfDifferent(entry.SteamId64, player.SteamId64, value => entry.SteamId64 = value);
+            entryChanged |= UpdateIfDifferent(entry.Steam3, player.Steam3, value => entry.Steam3 = value);
+            entryChanged |= UpdateIfDifferent(entry.LastKnownIp, NormalizeIp(player.Address), value => entry.LastKnownIp = value);
+            entryChanged |= UpdateIfDifferent(entry.LastServerHost, host, value => entry.LastServerHost = value);
             if (entry.LastServerPort != port)
             {
                 entry.LastServerPort = port;
@@ -98,14 +98,14 @@ public sealed class PlayerHistoryService
         return null;
     }
 
-    private static bool UpdateIfDifferent(ref string target, string source)
+    private static bool UpdateIfDifferent(string target, string source, Action<string> updateAction)
     {
         if (string.IsNullOrWhiteSpace(source) || target.Equals(source, StringComparison.Ordinal))
         {
             return false;
         }
 
-        target = source;
+        updateAction(source);
         return true;
     }
 
