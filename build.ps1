@@ -8,19 +8,48 @@ $distPath = Join-Path $PSScriptRoot 'dist'
 $publishPath = Join-Path $distPath 'publish'
 $zipPath = Join-Path $distPath 'CS2AdminTool.zip'
 
+function Remove-PathSafe {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [switch]$Recurse
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+
+    try {
+        if ($Recurse) {
+            Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+        }
+        else {
+            Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+        }
+    }
+    catch [System.IO.DirectoryNotFoundException], [System.IO.FileNotFoundException], [System.Management.Automation.ItemNotFoundException] {
+        Write-Host "Skipping already-missing path while cleaning: $Path"
+    }
+    catch {
+        Write-Warning "Initial delete failed for '$Path'. Retrying once. Error: $($_.Exception.Message)"
+        Start-Sleep -Milliseconds 200
+
+        if (Test-Path -LiteralPath $Path) {
+            if ($Recurse) {
+                Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            else {
+                Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+}
+
 Write-Host 'Cleaning previous builds...'
-if (Test-Path $publishPath) {
-    Remove-Item $publishPath -Recurse -Force
-}
-if (Test-Path $zipPath) {
-    Remove-Item $zipPath -Force
-}
-if (Test-Path $projectBinPath) {
-    Remove-Item $projectBinPath -Recurse -Force
-}
-if (Test-Path $projectObjPath) {
-    Remove-Item $projectObjPath -Recurse -Force
-}
+Remove-PathSafe -Path $publishPath -Recurse
+Remove-PathSafe -Path $zipPath
+Remove-PathSafe -Path $projectBinPath -Recurse
+Remove-PathSafe -Path $projectObjPath -Recurse
 if (-not (Test-Path $distPath)) {
     New-Item -Path $distPath -ItemType Directory | Out-Null
 }
