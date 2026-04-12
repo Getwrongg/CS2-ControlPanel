@@ -55,6 +55,7 @@ if (-not (Test-Path $distPath)) {
 }
 
 Write-Host 'Publishing application...'
+# IMPORTANT: Keep this publish model aligned with CS2AdminTool.csproj (RuntimeIdentifier=win-x64, self-contained publish).
 dotnet clean $projectPath -c Release -m:1
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet clean failed with exit code $LASTEXITCODE"
