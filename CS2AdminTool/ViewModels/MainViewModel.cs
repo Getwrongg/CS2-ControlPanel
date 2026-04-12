@@ -25,6 +25,7 @@ public class MainViewModel : ObservableObject
     private string _host = "127.0.0.1";
     private string _port = "27015";
     private string _password = string.Empty;
+    private string _savedServerName = string.Empty;
     private string _manualCommand = string.Empty;
     private string _newCategoryName = string.Empty;
     private string _configSearchText = string.Empty;
@@ -39,6 +40,7 @@ public class MainViewModel : ObservableObject
     private ServerConfigProfile? _selectedConfig;
     private MapProfile? _selectedMap;
     private ServerConfigProfile? _selectedRecentConfig;
+    private SavedServerProfile? _selectedSavedServer;
 
     private AppDataStore _store = new();
     private CancellationTokenSource? _monitorCts;
@@ -85,6 +87,7 @@ public class MainViewModel : ObservableObject
         Configs = new ObservableCollection<ServerConfigProfile>();
         Maps = new ObservableCollection<MapProfile>();
         RecentConfigs = new ObservableCollection<ServerConfigProfile>();
+        SavedServers = new ObservableCollection<SavedServerProfile>();
         LogLines = new ObservableCollection<string>();
         LiveFeedLines = new ObservableCollection<string>();
         PresetPacks = new ObservableCollection<PresetCommandPack>(BuildDefaultPresetPacks());
@@ -100,6 +103,8 @@ public class MainViewModel : ObservableObject
         PlayerHistoryView.Filter = FilterPlayerHistory;
 
         ToggleConnectionCommand = new AsyncRelayCommand(ToggleConnectionAsync);
+        SaveServerProfileCommand = new AsyncRelayCommand(SaveServerProfileAsync);
+        DeleteServerProfileCommand = new AsyncRelayCommand(DeleteSelectedServerProfileAsync, () => SelectedSavedServer is not null);
         ExecuteCommand = new AsyncRelayCommand(ExecuteManualCommandAsync, () => _rconService.IsConnected);
         RefreshTelemetryCommand = new AsyncRelayCommand(RefreshTelemetryAsync, () => _rconService.IsConnected);
         ToggleAutoRefreshCommand = new AsyncRelayCommand(ToggleAutoRefreshAsync, () => _rconService.IsConnected);
@@ -156,6 +161,7 @@ public class MainViewModel : ObservableObject
     public ObservableCollection<ServerConfigProfile> Configs { get; }
     public ObservableCollection<MapProfile> Maps { get; }
     public ObservableCollection<ServerConfigProfile> RecentConfigs { get; }
+    public ObservableCollection<SavedServerProfile> SavedServers { get; }
     public ObservableCollection<string> LogLines { get; }
     public ObservableCollection<string> LiveFeedLines { get; }
     public ObservableCollection<PresetCommandPack> PresetPacks { get; }
@@ -170,6 +176,7 @@ public class MainViewModel : ObservableObject
     public string Host { get => _host; set => SetProperty(ref _host, value); }
     public string Port { get => _port; set => SetProperty(ref _port, value); }
     public string Password { get => _password; set => SetProperty(ref _password, value); }
+    public string SavedServerName { get => _savedServerName; set => SetProperty(ref _savedServerName, value); }
     public string ManualCommand { get => _manualCommand; set => SetProperty(ref _manualCommand, value); }
     public string NewCategoryName { get => _newCategoryName; set => SetProperty(ref _newCategoryName, value); }
 
@@ -285,6 +292,26 @@ public class MainViewModel : ObservableObject
             if (SetProperty(ref _selectedRecentConfig, value) && value is not null)
             {
                 SelectedConfig = value;
+            }
+        }
+    }
+
+    public SavedServerProfile? SelectedSavedServer
+    {
+        get => _selectedSavedServer;
+        set
+        {
+            if (SetProperty(ref _selectedSavedServer, value))
+            {
+                if (value is not null)
+                {
+                    SavedServerName = value.Name;
+                    Host = value.Host;
+                    Port = value.Port.ToString();
+                    Password = value.Password;
+                }
+
+                RefreshCommandState();
             }
         }
     }
@@ -482,6 +509,8 @@ public class MainViewModel : ObservableObject
     public ICommand RunPostMatchArchiveCommand { get; }
     public ICommand ExportAuditLogCommand { get; }
     public ICommand ClearServerOverridesCommand { get; }
+    public ICommand SaveServerProfileCommand { get; }
+    public ICommand DeleteServerProfileCommand { get; }
 
     private async Task LoadAsync()
     {
@@ -492,6 +521,7 @@ public class MainViewModel : ObservableObject
             ApplyCollection(Categories, _store.Categories.OrderBy(c => c.Name));
             ApplyCollection(Maps, _store.Maps.OrderBy(m => m.DisplayName));
             ApplyCollection(Configs, _store.ServerConfigs.OrderBy(c => c.Name));
+            ApplyCollection(SavedServers, _store.SavedServers.OrderBy(s => s.Name));
             ApplyCollection(PlayerHistory, _store.PlayerHistory.OrderByDescending(p => p.LastSeenUtc));
 
             CommandDelayMs = _store.RunnerOptions.CommandDelayMs;
@@ -501,6 +531,7 @@ public class MainViewModel : ObservableObject
             SelectedCategory = Categories.FirstOrDefault();
             SelectedConfig = Configs.FirstOrDefault();
             SelectedMap = Maps.FirstOrDefault();
+            SelectedSavedServer = SavedServers.FirstOrDefault();
             SelectedHistoryPlayer = PlayerHistory.FirstOrDefault();
             AddLog("Configuration libraries loaded.");
         }
@@ -515,6 +546,7 @@ public class MainViewModel : ObservableObject
         _store.Categories = Categories.ToList();
         _store.Maps = Maps.ToList();
         _store.ServerConfigs = Configs.ToList();
+        _store.SavedServers = SavedServers.OrderBy(s => s.Name).ToList();
         _store.PlayerHistory = PlayerHistory.OrderByDescending(p => p.LastSeenUtc).ToList();
         _store.RunnerOptions = new RunnerOptions
         {
@@ -557,6 +589,70 @@ public class MainViewModel : ObservableObject
         {
             AddLog($"[Error] {ex.Message}");
         }
+    }
+
+    private async Task SaveServerProfileAsync()
+    {
+        if (!int.TryParse(Port, out var parsedPort))
+        {
+            AddLog("[Error] Port must be a valid integer.");
+            return;
+        }
+
+        var trimmedHost = Host.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedHost))
+        {
+            AddLog("[Error] Host is required.");
+            return;
+        }
+
+        var trimmedName = SavedServerName.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedName))
+        {
+            trimmedName = $"{trimmedHost}:{parsedPort}";
+        }
+
+        var profile = SelectedSavedServer;
+        if (profile is null)
+        {
+            profile = SavedServers.FirstOrDefault(s => s.Name.Equals(trimmedName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (profile is null)
+        {
+            profile = new SavedServerProfile();
+            SavedServers.Add(profile);
+        }
+
+        profile.Name = trimmedName;
+        profile.Host = trimmedHost;
+        profile.Port = parsedPort;
+        profile.Password = Password;
+
+        ResortSavedServers();
+        SelectedSavedServer = profile;
+
+        await PersistAsync();
+        AddLog($"Saved server profile '{profile.Name}'.");
+    }
+
+    private async Task DeleteSelectedServerProfileAsync()
+    {
+        if (SelectedSavedServer is null)
+        {
+            return;
+        }
+
+        var profileName = SelectedSavedServer.Name;
+        SavedServers.Remove(SelectedSavedServer);
+        SelectedSavedServer = SavedServers.FirstOrDefault();
+        if (SelectedSavedServer is null)
+        {
+            SavedServerName = string.Empty;
+        }
+
+        await PersistAsync();
+        AddLog($"Deleted server profile '{profileName}'.");
     }
 
     private async Task ExecuteManualCommandAsync()
@@ -1705,6 +1801,7 @@ public class MainViewModel : ObservableObject
 
     private void RefreshCommandState()
     {
+        (DeleteServerProfileCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (ExecuteCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (RefreshTelemetryCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (ToggleAutoRefreshCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
@@ -1738,6 +1835,12 @@ public class MainViewModel : ObservableObject
         (RunPostMatchArchiveCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (ExportAuditLogCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (ClearServerOverridesCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private void ResortSavedServers()
+    {
+        var ordered = SavedServers.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        ApplyCollection(SavedServers, ordered);
     }
 
     private void AddLog(string line)
