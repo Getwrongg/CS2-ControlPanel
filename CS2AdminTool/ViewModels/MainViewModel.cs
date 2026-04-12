@@ -105,6 +105,8 @@ public class MainViewModel : ObservableObject
         ToggleConnectionCommand = new AsyncRelayCommand(ToggleConnectionAsync);
         SaveServerProfileCommand = new AsyncRelayCommand(SaveServerProfileAsync);
         DeleteServerProfileCommand = new AsyncRelayCommand(DeleteSelectedServerProfileAsync, () => SelectedSavedServer is not null);
+        LoadServerProfileCommand = new AsyncRelayCommand(LoadSelectedServerProfileAsync, () => SelectedSavedServer is not null);
+        NewServerProfileCommand = new AsyncRelayCommand(StartNewServerProfileAsync);
         ExecuteCommand = new AsyncRelayCommand(ExecuteManualCommandAsync, () => _rconService.IsConnected);
         RefreshTelemetryCommand = new AsyncRelayCommand(RefreshTelemetryAsync, () => _rconService.IsConnected);
         ToggleAutoRefreshCommand = new AsyncRelayCommand(ToggleAutoRefreshAsync, () => _rconService.IsConnected);
@@ -303,14 +305,6 @@ public class MainViewModel : ObservableObject
         {
             if (SetProperty(ref _selectedSavedServer, value))
             {
-                if (value is not null)
-                {
-                    SavedServerName = value.Name;
-                    Host = value.Host;
-                    Port = value.Port.ToString();
-                    Password = value.Password;
-                }
-
                 RefreshCommandState();
             }
         }
@@ -511,6 +505,8 @@ public class MainViewModel : ObservableObject
     public ICommand ClearServerOverridesCommand { get; }
     public ICommand SaveServerProfileCommand { get; }
     public ICommand DeleteServerProfileCommand { get; }
+    public ICommand LoadServerProfileCommand { get; }
+    public ICommand NewServerProfileCommand { get; }
 
     private async Task LoadAsync()
     {
@@ -532,6 +528,10 @@ public class MainViewModel : ObservableObject
             SelectedConfig = Configs.FirstOrDefault();
             SelectedMap = Maps.FirstOrDefault();
             SelectedSavedServer = SavedServers.FirstOrDefault();
+            if (SelectedSavedServer is not null)
+            {
+                await LoadSelectedServerProfileAsync();
+            }
             SelectedHistoryPlayer = PlayerHistory.FirstOrDefault();
             AddLog("Configuration libraries loaded.");
         }
@@ -612,11 +612,7 @@ public class MainViewModel : ObservableObject
             trimmedName = $"{trimmedHost}:{parsedPort}";
         }
 
-        var profile = SelectedSavedServer;
-        if (profile is null)
-        {
-            profile = SavedServers.FirstOrDefault(s => s.Name.Equals(trimmedName, StringComparison.OrdinalIgnoreCase));
-        }
+        var profile = SavedServers.FirstOrDefault(s => s.Name.Equals(trimmedName, StringComparison.OrdinalIgnoreCase));
 
         if (profile is null)
         {
@@ -634,6 +630,32 @@ public class MainViewModel : ObservableObject
 
         await PersistAsync();
         AddLog($"Saved server profile '{profile.Name}'.");
+    }
+
+    private Task LoadSelectedServerProfileAsync()
+    {
+        if (SelectedSavedServer is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        SavedServerName = SelectedSavedServer.Name;
+        Host = SelectedSavedServer.Host;
+        Port = SelectedSavedServer.Port.ToString();
+        Password = SelectedSavedServer.Password;
+        AddLog($"Loaded server profile '{SelectedSavedServer.Name}'.");
+        return Task.CompletedTask;
+    }
+
+    private Task StartNewServerProfileAsync()
+    {
+        SelectedSavedServer = null;
+        SavedServerName = string.Empty;
+        Host = "127.0.0.1";
+        Port = "27015";
+        Password = string.Empty;
+        AddLog("Ready to create a new server profile.");
+        return Task.CompletedTask;
     }
 
     private async Task DeleteSelectedServerProfileAsync()
@@ -1802,6 +1824,7 @@ public class MainViewModel : ObservableObject
     private void RefreshCommandState()
     {
         (DeleteServerProfileCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (LoadServerProfileCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (ExecuteCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (RefreshTelemetryCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (ToggleAutoRefreshCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
