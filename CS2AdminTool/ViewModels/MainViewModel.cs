@@ -267,6 +267,7 @@ public class MainViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(SelectedConfigCommandsText));
                 OnPropertyChanged(nameof(SelectedConfigTagsText));
+                OnPropertyChanged(nameof(SelectedConfigMap));
                 OnPropertyChanged(nameof(SelectedMapTagsText));
                 RefreshCommandState();
             }
@@ -432,6 +433,37 @@ public class MainViewModel : ObservableObject
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             SelectedConfig.UpdatedAt = DateTime.UtcNow;
+            OnPropertyChanged();
+        }
+    }
+
+    public MapProfile? SelectedConfigMap
+    {
+        get
+        {
+            if (SelectedConfig?.MapProfileId is null)
+            {
+                return null;
+            }
+
+            return Maps.FirstOrDefault(m => m.Id == SelectedConfig.MapProfileId.Value);
+        }
+        set
+        {
+            if (SelectedConfig is null)
+            {
+                return;
+            }
+
+            var selectedMapId = value?.Id;
+            if (SelectedConfig.MapProfileId == selectedMapId)
+            {
+                return;
+            }
+
+            SelectedConfig.MapProfileId = selectedMapId;
+            SelectedConfig.UpdatedAt = DateTime.UtcNow;
+            SyncConfigMapSnapshot(SelectedConfig);
             OnPropertyChanged();
         }
     }
@@ -978,6 +1010,7 @@ public class MainViewModel : ObservableObject
         Maps.Add(map);
         SelectedMap = map;
         OnPropertyChanged(nameof(MapOptions));
+        OnPropertyChanged(nameof(SelectedConfigMap));
         await PersistAsync();
     }
 
@@ -1013,6 +1046,7 @@ public class MainViewModel : ObservableObject
         Maps.Remove(SelectedMap);
         SelectedMap = Maps.FirstOrDefault();
         OnPropertyChanged(nameof(MapOptions));
+        OnPropertyChanged(nameof(SelectedConfigMap));
         await PersistAsync();
     }
 
@@ -1027,6 +1061,7 @@ public class MainViewModel : ObservableObject
         Maps.Add(duplicated);
         SelectedMap = duplicated;
         OnPropertyChanged(nameof(MapOptions));
+        OnPropertyChanged(nameof(SelectedConfigMap));
         await PersistAsync();
     }
 

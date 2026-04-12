@@ -137,7 +137,9 @@
                                 <TextBlock Margin="0,8,0,0" Text="Tags (comma separated)"/>
                                 <TextBox Text="{Binding SelectedConfigTagsText, UpdateSourceTrigger=PropertyChanged}"/>
                                 <TextBlock Margin="0,8,0,0" Text="Assigned Map"/>
-                                <ComboBox ItemsSource="{Binding MapOptions}" DisplayMemberPath="DisplayName" SelectedValuePath="Id" SelectedValue="{Binding SelectedConfig.MapProfileId, UpdateSourceTrigger=PropertyChanged}"/>
+                                <ComboBox ItemsSource="{Binding MapOptions}"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedItem="{Binding SelectedConfigMap, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
                                 <TextBlock Margin="0,8,0,0" Text="Commands (one per line)"/>
                                 <TextBox Height="220" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Text="{Binding SelectedConfigCommandsText, UpdateSourceTrigger=PropertyChanged}"/>
