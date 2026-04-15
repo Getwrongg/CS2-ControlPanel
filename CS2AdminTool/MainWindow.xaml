@@ -37,16 +37,42 @@
                 <Button Grid.Row="1" Grid.Column="3" Width="130" Content="{Binding ConnectionButtonText}" Command="{Binding ToggleConnectionCommand}" Margin="0,4,8,0"/>
                 <Button Grid.Row="1" Grid.Column="4" Width="160" Content="Run Selected Config" Command="{Binding RunSelectedConfigCommand}" Margin="0,4,0,0"/>
 
-                <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,10,0,0">
-                    <TextBlock VerticalAlignment="Center" Text="Saved Server"/>
-                    <ComboBox Width="240" Margin="8,0,0,0"
-                              ItemsSource="{Binding SavedServers}"
-                              SelectedItem="{Binding SelectedSavedServer}"
-                              DisplayMemberPath="Name"/>
-                    <TextBox Width="180" Margin="8,0,0,0" Text="{Binding SavedServerName, UpdateSourceTrigger=PropertyChanged}"/>
-                    <Button Width="90" Margin="8,0,0,0" Content="Save" Command="{Binding SaveServerProfileCommand}"/>
-                    <Button Width="90" Margin="8,0,0,0" Content="Delete" Command="{Binding DeleteServerProfileCommand}"/>
-                </StackPanel>
+                <Grid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2.2*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" BorderBrush="#E3E3E3" BorderThickness="1" CornerRadius="4" Padding="8">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,6" Text="Saved server settings"/>
+                            <ListBox Height="92"
+                                     ItemsSource="{Binding SavedServers}"
+                                     SelectedItem="{Binding SelectedSavedServer}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="  "/>
+                                            <TextBlock Text="{Binding Endpoint}" Foreground="Gray"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                        <TextBlock Text="Profile Name"/>
+                        <TextBox Margin="0,4,0,6" Text="{Binding SavedServerName, UpdateSourceTrigger=PropertyChanged}"/>
+                        <WrapPanel>
+                            <Button Width="110" Content="Load Selected" Command="{Binding LoadServerProfileCommand}"/>
+                            <Button Width="90" Margin="6,0,0,0" Content="New" Command="{Binding NewServerProfileCommand}"/>
+                            <Button Width="90" Margin="6,0,0,0" Content="Save" Command="{Binding SaveServerProfileCommand}"/>
+                            <Button Width="90" Margin="6,0,0,0" Content="Delete" Command="{Binding DeleteServerProfileCommand}"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Grid>
             </Grid>
         </Border>
 
@@ -111,7 +137,9 @@
                                 <TextBlock Margin="0,8,0,0" Text="Tags (comma separated)"/>
                                 <TextBox Text="{Binding SelectedConfigTagsText, UpdateSourceTrigger=PropertyChanged}"/>
                                 <TextBlock Margin="0,8,0,0" Text="Assigned Map"/>
-                                <ComboBox ItemsSource="{Binding MapOptions}" DisplayMemberPath="DisplayName" SelectedValuePath="Id" SelectedValue="{Binding SelectedConfig.MapProfileId, UpdateSourceTrigger=PropertyChanged}"/>
+                                <ComboBox ItemsSource="{Binding MapOptions}"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedItem="{Binding SelectedConfigMap, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
                                 <TextBlock Margin="0,8,0,0" Text="Commands (one per line)"/>
                                 <TextBox Height="220" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Text="{Binding SelectedConfigCommandsText, UpdateSourceTrigger=PropertyChanged}"/>
