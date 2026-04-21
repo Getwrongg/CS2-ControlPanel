@@ -2,6 +2,8 @@
 
 A Windows desktop control panel for managing Counter-Strike 2 dedicated servers over RCON.
 
+Linux Version: https://github.com/SkinnyRibs/CS2-ControlPanelLinux
+
 CS2 Control Panel is designed for server owners, match admins, and community operators who want a structured workflow for running server configs, switching maps, monitoring server health, and performing common admin actions from a single UI.
 
 <img width="1379" height="887" alt="image" src="https://github.com/user-attachments/assets/f35763c6-cee0-4ea0-a0cc-7232c6ff05b2" />
